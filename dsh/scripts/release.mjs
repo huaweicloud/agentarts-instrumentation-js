@@ -170,6 +170,16 @@ for (const file of fs.readdirSync(localeDir).filter((f) => f.endsWith(".json")))
 }
 if (!titles.en) fail("locale/en.json 缺少 meta.title（索引的 title 必须包含 en）")
 
+// 同一版本保留既有发布时间，避免重复运行流水线导致索引无意义抖动
+let previousPublishTimestamp
+try {
+  const prev = JSON.parse(fs.readFileSync(indexPath, "utf8"))
+  const entry = (prev.plugins ?? []).find((p) => p.name === pkg.name)
+  previousPublishTimestamp = (entry?.versions ?? []).find((v) => v.version === pkg.version)?.publishTimestamp
+} catch {
+  // 首次生成或旧索引不可读：使用当前时间
+}
+
 const iconRel = path
   .relative(marketDir, path.join(PKG_DIR, "icon.svg"))
   .split(path.sep)
@@ -192,7 +202,7 @@ const index = {
       versions: [
         {
           version: pkg.version,
-          publishTimestamp: Math.floor(Date.now() / 1000),
+          publishTimestamp: previousPublishTimestamp ?? Math.floor(Date.now() / 1000),
           source: {
             type: "git",
             url: repoUrl,
