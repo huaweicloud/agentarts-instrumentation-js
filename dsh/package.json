@@ -16,6 +16,7 @@
     "locale/*.json",
     "icon.svg",
     "config.example.json",
+    "installer",
     "README.md"
   ],
   "scripts": {
@@ -24,7 +25,8 @@
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "typecheck": "tsc --noEmit",
     "test": "node --test dist/test/*.test.js",
-    "pack:bundle": "node scripts/pack.mjs"
+    "pack:bundle": "node scripts/pack.mjs",
+    "release": "node scripts/release.mjs"
   },
   "keywords": [
     "deepseek-harness",

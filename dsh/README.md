@@ -83,6 +83,31 @@ pnpm pack:bundle    # npm pack + 重命名 → huaweicloud-agentarts-observation
 
 npm 对 scoped 包（`@cloud/*`）默认产出 `cloud-` 前缀文件名，`scripts/pack.mjs` 会重命名为无前缀形态（installer 按该前缀自动探测 tgz）。
 
+### 发布流水线
+
+```sh
+npm run release              # 完整流程
+node scripts/release.mjs --dry-run   # 只检查不写索引
+```
+
+依次执行：构建（tsc + esbuild）→ **产物漂移校验** → 全量测试 → 打包清单校验 → 生成插件市场索引。
+
+**产物漂移校验**是本流水线的核心：`dist/plugin.mjs` 作为分发产物入库，DSH 从 Git 安装时直接使用它、不会构建。若改了 `src/` 却忘记重新构建提交，用户会装到旧逻辑，而肉眼极难发现。脚本会重新构建并与仓库中的产物比对，不一致即失败并要求提交。
+
+其余校验：`files` 清单每一项都存在、产物含 `createRequire` banner（缺失会导致宿主加载失败）、`dsh.bundle.patch` 指向的文件存在。
+
+发布流程：
+
+```sh
+git add -A && git commit -m "chore: 发布 v1.0.0"
+git tag v1.0.0
+node scripts/release.mjs --commit "$(git rev-parse v1.0.0)"   # 让索引精确指向发布提交
+git add market/index.json && git commit -m "chore: 更新索引指向 v1.0.0"
+git push origin HEAD --tags
+```
+
+插件市场索引说明见 [market/README.md](market/README.md)。
+
 ## 安装 / 卸载
 
 **方式一：安装脚本**（推荐给最终用户，与 tgz 放同一目录）：

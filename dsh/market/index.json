@@ -1,0 +1,41 @@
+{
+  "format": 1,
+  "title": {
+    "en": "Huawei Cloud AgentArts",
+    "zh": "华为云 AgentArts"
+  },
+  "plugins": [
+    {
+      "name": "@cloud/huaweicloud-agentarts-observation-dsh-plugin",
+      "title": {
+        "en": "AgentArts observation",
+        "zh": "AgentArts 可观测上报"
+      },
+      "description": {
+        "en": "Collects DeepSeek Harness runtime traces and metrics and reports them to Huawei Cloud AgentArts (APM for traces, AOM for metrics) over OTLP gRPC. Configure endpoints and credentials in ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json; the installer scripts in the repository's installer/ directory can generate it from your AgentArts console values. Captured message content can be disabled via features.captureMessageContent. Turning this plugin off stops all reporting; DSH sessions and logs are unaffected.",
+        "zh": "采集 DeepSeek Harness 运行时 trace 与 metric，经 OTLP gRPC 上报华为云 AgentArts（trace 到 APM、metric 到 AOM）。端点与鉴权配置在 ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json，可使用仓库 installer/ 目录中的安装脚本从 AgentArts 控制台参数一键生成；可通过 features.captureMessageContent 关闭消息内容采集。关闭本插件即停止上报，不影响 DSH 会话与日志。"
+      },
+      "icon": "../icon.svg",
+      "author": "Huawei Cloud",
+      "repository": {
+        "url": "https://github.com/huaweicloud/agentarts-instrumentation-js",
+        "directory": "dsh"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1794995072,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/huaweicloud/agentarts-instrumentation-js",
+            "commit": "f47458c4e1951d0133d3f3de9a5da2667f3ed043",
+            "path": "dsh"
+          },
+          "engines": {
+            "dsh": "^0.2.1-rc.2"
+          }
+        }
+      ]
+    }
+  ]
+}
