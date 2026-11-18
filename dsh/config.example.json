@@ -1,0 +1,45 @@
+// AgentArts 观测插件运行配置模板（带注释的 JSONC；运行时读取同目录结构下的 config.json，
+// 会剥离 // 与 /* */ 注释）。安装脚本 installer/dsh-agentarts-plugin.(ps1|sh) 会把
+// 命令行参数合并写入 ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json。
+{
+  "version": "1.0.0",
+  // 总开关：false 时插件加载后不采集、不上报
+  "enabled": true,
+  // 数据/日志目录（~ 展开为用户主目录；Windows 下的 msys 风格路径也会被归一化）
+  "outputDir": "~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/data",
+  // Agent 名称：写入 gen_ai.agent.name（span 名与资源属性；为空兜底 deepseek-harness）
+  "agent_name": "",
+  // 用户/租户标识：写入 user.id（为空兜底主机名）
+  "user.id": "",
+  // 功能开关
+  "features": {
+    // debug 日志开关（默认关闭；开启后写 DEBUG 级明细到 data/logs/plugin-YYYY-MM-DD.log）
+    "debug": false,
+    // 采集 trace 的输入/输出消息内容（默认开启；false 时不携带 gen_ai.*.messages 等内容属性）
+    "captureMessageContent": true,
+    // 串联子 agent trace 到父 trace（默认开启；false 时子 agent trace 独立上报）
+    "linkSubagentTrace": true,
+    // 日志保留天数：自动删除更早的 plugin-YYYY-MM-DD.log（0 关闭清理）
+    "logRetentionDays": 14
+  },
+  // OpenTelemetry 上报配置（APM trace / AOM metric；默认不配置则不上报）
+  "otel": {
+    // APM（trace）总开关
+    "agentarts_agentops_otel_agent_apm_enable": true,
+    // AOM（metric）总开关
+    "agentarts_agentops_otel_agent_aom_enable": true,
+    // ── AgentArts 控制台参数 ──
+    "agent_domain_id": "", // 租户/域 ID（domain.id）
+    "agentarts_project_id": "", // 项目 ID（projectid 元数据）
+    "agent_resource_id": "", // Agent 资源 ID（gen_ai.resource.id）
+    "resource_type": "agent", // agent | multiagents | workflow
+    "resource_version": "default", // 资源版本；安装脚本会自动写入运行中 DSH 版本
+    // ── APM（trace）OTLP gRPC ──
+    "agentarts_agentops_apm_token": "", // APM 认证 token（gRPC metadata: authentication）
+    "agentarts_agentops_apm_exporter_endpoint": "", // 例如 10.x.x.x:4317（可省略 :4317）
+    // ── AOM（metric）OTLP gRPC ──
+    "agentarts_agentops_aom_access_code": "", // AOM 接入码（gRPC metadata: authorization: Bearer）
+    "agentarts_agentops_aom_exporter_endpoint": "", // 例如 215.x.x.x:4317
+    "agentarts_agentops_aom_prometheus_id": "" // AOM Prometheus 实例 ID（gRPC metadata: promid）
+  }
+}

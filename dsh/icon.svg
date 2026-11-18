@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+  <!-- 遥测脉冲：DSH 运行时信号 -->
+  <path d="M5.5 25H9.5L12 18.5 15 28 17.5 21.5H21L24.5 15" fill="none" stroke="#2563EB" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- 上行箭头：上报 AgentArts -->
+  <path d="M24.5 14 30.5 8M26.2 8H30.5V12.3" fill="none" stroke="#7C8DB5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,9 @@
+# 依赖与产物
+node_modules/
+# 只忽略 tsc 的中间产物与测试产物；dist/plugin.mjs 是分发产物，必须入库：
+# DSH 从 Git 安装时拉的是源码、不会自动构建，产物缺失会导致加载失败。
+dist/*
+!dist/plugin.mjs
+*.tgz
+*.bak.*
+.DS_Store

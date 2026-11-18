@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "AgentArts observation",
+    "description": "Collects DeepSeek Harness runtime traces and metrics and reports them to Huawei Cloud AgentArts (APM for traces, AOM for metrics) over OTLP gRPC. Configure endpoints and credentials in ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json; the installer scripts in the repository's installer/ directory can generate it from your AgentArts console values. Captured message content can be disabled via features.captureMessageContent. Turning this plugin off stops all reporting; DSH sessions and logs are unaffected."
+  }
+}
