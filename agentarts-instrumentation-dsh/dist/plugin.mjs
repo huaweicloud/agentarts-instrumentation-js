@@ -42316,6 +42316,8 @@ var DshTraceCoordinator = class {
     this.logger = logger;
   }
   sessions = /* @__PURE__ */ new Map();
+  // 工具名 -> 描述（来自 LLM 请求携带的工具定义，用于 tool span 的属性）
+  toolDescriptions = /* @__PURE__ */ new Map();
   // ── 子 agent trace 串联（方案 B：提前创建 root span，无缓冲） ──
   // 活跃 turn 的 root span context 注册表：key = sessionId
   //（startTurn 时写入，closeTurn/disposeSession 时清除；子 turn/start 查父用）
@@ -42589,6 +42591,13 @@ var DshTraceCoordinator = class {
       requestEvent["gen_ai.system_instructions"] = mapSystemInstruction(options.system);
       requestEvent["gen_ai.tool.definitions"] = mapToolDefinitions(options.tools);
     }
+    if (Array.isArray(options.tools)) {
+      for (const tool of options.tools) {
+        if (typeof tool?.name === "string" && typeof tool?.description === "string" && tool.description) {
+          this.toolDescriptions.set(tool.name, tool.description);
+        }
+      }
+    }
     turn.events.push(requestEvent);
     const llm = {
       options,
@@ -42747,6 +42756,8 @@ var DshTraceCoordinator = class {
     callEvent["dsh.step"] = data.step;
     callEvent["gen_ai.tool.name"] = data.name;
     callEvent["gen_ai.tool.call.id"] = data.callId;
+    const description = this.toolDescriptions.get(data.name);
+    if (description) callEvent["gen_ai.tool.description"] = description;
     if (this.config.features.captureMessageContent) {
       callEvent["gen_ai.tool.call.arguments"] = data.arguments;
     }
@@ -43737,6 +43748,7 @@ function processToolSpan(events, skipSkillMetrics = false) {
       span.setAttribute("gen_ai.operation.name", "execute_tool");
       span.setAttribute("gen_ai.span.kind", "TOOL");
       span.setAttribute("gen_ai.tool.type", "function");
+      setAttr(span, "gen_ai.tool.description", callEvent?.["gen_ai.tool.description"] ?? resultEvent?.["gen_ai.tool.description"]);
       if (skillName) {
         setAttr(span, "gen_ai.skill.name", skillName);
       }

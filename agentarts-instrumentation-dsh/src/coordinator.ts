@@ -204,6 +204,8 @@ export class DshTraceCoordinator {
     this.logger = logger
   }
   sessions = new Map<string, SessionState>()
+  // 工具名 -> 描述（来自 LLM 请求携带的工具定义，用于 tool span 的属性）
+  toolDescriptions = new Map<string, string>()
   // ── 子 agent trace 串联（方案 B：提前创建 root span，无缓冲） ──
   // 活跃 turn 的 root span context 注册表：key = sessionId
   //（startTurn 时写入，closeTurn/disposeSession 时清除；子 turn/start 查父用）
@@ -502,6 +504,15 @@ export class DshTraceCoordinator {
       requestEvent["gen_ai.system_instructions"] = mapSystemInstruction(options.system)
       requestEvent["gen_ai.tool.definitions"] = mapToolDefinitions(options.tools)
     }
+    // 记录工具名到描述的映射：tool/call 事件不含描述，工具 span 的
+    // gen_ai.tool.description 只能从这里回查。描述属元数据，不受内容开关影响。
+    if (Array.isArray(options.tools)) {
+      for (const tool of options.tools) {
+        if (typeof tool?.name === "string" && typeof tool?.description === "string" && tool.description) {
+          this.toolDescriptions.set(tool.name, tool.description)
+        }
+      }
+    }
     turn.events.push(requestEvent)
     const llm: LlmStreamState = {
       options,
@@ -666,6 +677,10 @@ export class DshTraceCoordinator {
     callEvent["dsh.step"] = data.step
     callEvent["gen_ai.tool.name"] = data.name
     callEvent["gen_ai.tool.call.id"] = data.callId
+    // 工具描述不在 tool/call 事件里（DSH 的负载只有 name/arguments），
+    // 只能从 LLM 请求携带的工具定义中按名字回查
+    const description = this.toolDescriptions.get(data.name)
+    if (description) callEvent["gen_ai.tool.description"] = description
     if (this.config.features.captureMessageContent) {
       callEvent["gen_ai.tool.call.arguments"] = data.arguments
     }

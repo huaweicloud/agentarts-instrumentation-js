@@ -1013,6 +1013,8 @@ function processToolSpan(events: TurnEventRecord[], skipSkillMetrics = false) {
       span.setAttribute("gen_ai.operation.name", "execute_tool")
       span.setAttribute("gen_ai.span.kind", "TOOL")
       span.setAttribute("gen_ai.tool.type", "function")
+      // 工具描述：来自 LLM 请求携带的工具定义（tool/call 事件本身不含描述）
+      setAttr(span, "gen_ai.tool.description", callEvent?.["gen_ai.tool.description"] ?? resultEvent?.["gen_ai.tool.description"])
       if (skillName) {
         setAttr(span, "gen_ai.skill.name", skillName)
       }
