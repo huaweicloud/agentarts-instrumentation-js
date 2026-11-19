@@ -1,5 +1,5 @@
 // 配置加载：~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json
-// 支持 // 与 /* */ 注释（JSONC）；旧版 ~/.dsh-metrics 的一次性迁移由安装脚本完成。
+// 支持 // 与 /* */ 注释（JSONC）。
 // 启动时经 validateConfig 校验并输出告警；运行期 watchConfig 监听变更，
 // 轻量字段（features/agent_name 等）热生效，otel/enabled 变更提示需重启。
 import * as os from "node:os"
@@ -13,7 +13,6 @@ const PLUGIN_HOME = path.join(
   "huaweicloud-agentarts-observation-dsh-plugin"
 )
 export const CONFIG_PATH = path.join(PLUGIN_HOME, "config.json")
-const LEGACY_METRICS_HOME = path.join(os.homedir(), ".dsh-metrics")
 
 const DEFAULT_CONFIG = {
   // 基础配置
@@ -405,10 +404,6 @@ export function resolveOutputDir(config: { outputDir: string }) {
         outputDir = path.join(`${driveMatch[1].toUpperCase()}:\\`, driveMatch[2])
       }
     }
-  }
-  const legacyData = path.join(LEGACY_METRICS_HOME, "data")
-  if (path.resolve(outputDir) === path.resolve(legacyData)) {
-    outputDir = path.join(PLUGIN_HOME, "data")
   }
   return outputDir
 }

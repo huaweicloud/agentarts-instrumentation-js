@@ -106,9 +106,7 @@ $script:PluginHome = Join-Path $env:USERPROFILE ".dsh\plugins\$($script:PluginDi
 $script:MetricsConfig = Join-Path $script:PluginHome "config.json"
 # config.json 的历史备份保留份数（备份含明文凭据，无限累积会扩大暴露面）
 $script:MaxConfigBackups = 5
-# 旧版配置目录（一次性迁移源；仅 install 读取复制，运行时不再写入）
-$script:LegacyMetricsConfig = Join-Path $env:USERPROFILE ".dsh-metrics\config.json"
-$script:LegacyMetricsHome = Join-Path $env:USERPROFILE ".dsh-metrics"
+
 $script:SummarySteps = [System.Collections.Generic.List[string]]::new()
 
 # 已知 profile 的基础 bundle（创建缺失 profile 时使用；对齐 DSH 内置 profile）
@@ -398,19 +396,6 @@ function Protect-SecretFile([string]$Path) {
 # 只生成/合并 config.json，不触碰 profile。已通过 DSH 插件界面或 dsh plugin add
 # 从 Git 安装插件的用户，可单独运行 configure 子命令写入接入信息。
 function Write-PluginConfig {
-    # 旧版配置一次性迁移（新路径无 config.json 且旧 ~/.dsh-metrics/ 存在 → 复制，旧文件保留）
-    if (-not (Test-Path $script:MetricsConfig) -and (Test-Path $script:LegacyMetricsConfig)) {
-        New-Item -ItemType Directory -Path $script:PluginHome -Force | Out-Null
-        Copy-Item $script:LegacyMetricsConfig $script:MetricsConfig -Force
-        Write-Info "config migrated from legacy location (original kept): $script:LegacyMetricsConfig -> $script:MetricsConfig"
-        $legacyData = Join-Path $script:LegacyMetricsHome "data"
-        $newData = Join-Path $script:PluginHome "data"
-        if ((Test-Path $legacyData) -and -not (Test-Path $newData)) {
-            Copy-Item $legacyData $newData -Recurse -Force
-            Write-Info "historical logs migrated from legacy location (original kept): $legacyData"
-        }
-        $script:SummarySteps.Add("config: migrated from legacy ~/.dsh-metrics/")
-    }
 
     $configExists = Test-Path $script:MetricsConfig
 

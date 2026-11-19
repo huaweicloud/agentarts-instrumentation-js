@@ -5978,8 +5978,8 @@ var require_promise = __commonJS({
       _resolve;
       _reject;
       constructor() {
-        this._promise = new Promise((resolve3, reject) => {
-          this._resolve = resolve3;
+        this._promise = new Promise((resolve2, reject) => {
+          this._resolve = resolve2;
           this._reject = reject;
         });
       }
@@ -6075,9 +6075,9 @@ var require_exporter = __commonJS({
     var api_1 = (init_esm(), __toCommonJS(esm_exports));
     var suppress_tracing_1 = require_suppress_tracing();
     function _export(exporter, arg) {
-      return new Promise((resolve3) => {
+      return new Promise((resolve2) => {
         api_1.context.with((0, suppress_tracing_1.suppressTracing)(api_1.context.active()), () => {
-          exporter.export(arg, resolve3);
+          exporter.export(arg, resolve2);
         });
       });
     }
@@ -7856,12 +7856,12 @@ var require_MultiSpanProcessor = __commonJS({
         for (const spanProcessor of this._spanProcessors) {
           promises2.push(spanProcessor.forceFlush());
         }
-        return new Promise((resolve3) => {
+        return new Promise((resolve2) => {
           Promise.all(promises2).then(() => {
-            resolve3();
+            resolve2();
           }).catch((error) => {
             (0, core_1.globalErrorHandler)(error || new Error("MultiSpanProcessor: forceFlush failed"));
-            resolve3();
+            resolve2();
           });
         });
       }
@@ -7887,9 +7887,9 @@ var require_MultiSpanProcessor = __commonJS({
         for (const spanProcessor of this._spanProcessors) {
           promises2.push(spanProcessor.shutdown());
         }
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve2, reject) => {
           Promise.all(promises2).then(() => {
-            resolve3();
+            resolve2();
           }, reject);
         });
       }
@@ -8153,14 +8153,14 @@ var require_BatchSpanProcessorBase = __commonJS({
        * for all other cases _flush should be used
        * */
       _flushAll() {
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve2, reject) => {
           const promises2 = [];
           const count = Math.ceil(this._finishedSpans.length / this._maxExportBatchSize);
           for (let i = 0, j = count; i < j; i++) {
             promises2.push(this._flushOneBatch());
           }
           Promise.all(promises2).then(() => {
-            resolve3();
+            resolve2();
           }).catch(reject);
         });
       }
@@ -8169,7 +8169,7 @@ var require_BatchSpanProcessorBase = __commonJS({
         if (this._finishedSpans.length === 0) {
           return Promise.resolve();
         }
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve2, reject) => {
           const timer = setTimeout(() => {
             reject(new Error("Timeout"));
           }, this._exportTimeoutMillis);
@@ -8185,7 +8185,7 @@ var require_BatchSpanProcessorBase = __commonJS({
               clearTimeout(timer);
               this._metrics.finishSpans(spans.length, result.error);
               if (result.code === core_1.ExportResultCode.SUCCESS) {
-                resolve3();
+                resolve2();
               } else {
                 reject(result.error ?? new Error("BatchSpanProcessor: span export failed"));
               }
@@ -8398,32 +8398,32 @@ var require_TracerProvider = __commonJS({
       forceFlush(options) {
         const timeout = options?.timeoutMillis ?? this._forceFlushTimeoutMillis;
         const promises2 = this._activeSpanProcessor["_spanProcessors"].map((spanProcessor) => {
-          return new Promise((resolve3) => {
+          return new Promise((resolve2) => {
             let state;
             const timeoutInterval = setTimeout(() => {
-              resolve3(new Error(`Span processor did not completed within timeout period of ${timeout} ms`));
+              resolve2(new Error(`Span processor did not completed within timeout period of ${timeout} ms`));
               state = ForceFlushState.timeout;
             }, timeout);
             spanProcessor.forceFlush().then(() => {
               clearTimeout(timeoutInterval);
               if (state !== ForceFlushState.timeout) {
                 state = ForceFlushState.resolved;
-                resolve3(state);
+                resolve2(state);
               }
             }).catch((error) => {
               clearTimeout(timeoutInterval);
               state = ForceFlushState.error;
-              resolve3(error);
+              resolve2(error);
             });
           });
         });
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve2, reject) => {
           Promise.all(promises2).then((results) => {
             const errors = results.filter((result) => result !== ForceFlushState.resolved);
             if (errors.length > 0) {
               reject(errors);
             } else {
-              resolve3();
+              resolve2();
             }
           }).catch((error) => reject([error]));
         });
@@ -13443,7 +13443,7 @@ var require_call_credentials = __commonJS({
           if (isCurrentOauth2Client(googleCredentials)) {
             getHeaders = googleCredentials.getRequestHeaders(options.service_url);
           } else {
-            getHeaders = new Promise((resolve3, reject) => {
+            getHeaders = new Promise((resolve2, reject) => {
               googleCredentials.getRequestMetadata(options.service_url, (err, headers) => {
                 if (err) {
                   reject(err);
@@ -13453,7 +13453,7 @@ var require_call_credentials = __commonJS({
                   reject(new Error("Headers not set by metadata plugin"));
                   return;
                 }
-                resolve3(headers);
+                resolve2(headers);
               });
             });
           }
@@ -13509,10 +13509,10 @@ var require_call_credentials = __commonJS({
         this.metadataGenerator = metadataGenerator;
       }
       generateMetadata(options) {
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve2, reject) => {
           this.metadataGenerator(options, (err, metadata) => {
             if (metadata !== void 0) {
-              resolve3(metadata);
+              resolve2(metadata);
             } else {
               reject(err);
             }
@@ -13897,14 +13897,14 @@ var require_channel_credentials = __commonJS({
       }
       connect(socket) {
         const tlsConnectOptions = Object.assign({ socket }, this.connectionOptions);
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve2, reject) => {
           const tlsSocket = (0, tls_1.connect)(tlsConnectOptions, () => {
             var _a;
             if (((_a = this.connectionOptions.rejectUnauthorized) !== null && _a !== void 0 ? _a : true) && !tlsSocket.authorized) {
               reject(tlsSocket.authorizationError);
               return;
             }
-            resolve3({
+            resolve2({
               socket: tlsSocket,
               secure: true
             });
@@ -14023,8 +14023,8 @@ var require_channel_credentials = __commonJS({
         if (this.hasReceivedUpdates()) {
           return Promise.resolve(this.getLatestSecureContext());
         } else {
-          return new Promise((resolve3) => {
-            this.secureContextWatchers.push(resolve3);
+          return new Promise((resolve2) => {
+            this.secureContextWatchers.push(resolve2);
           });
         }
       }
@@ -14057,7 +14057,7 @@ var require_channel_credentials = __commonJS({
         this.callCredentials = callCredentials;
       }
       connect(socket) {
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve2, reject) => {
           const secureContext = this.parent.getLatestSecureContext();
           if (!secureContext) {
             reject(new Error("Failed to load credentials"));
@@ -14082,7 +14082,7 @@ var require_channel_credentials = __commonJS({
               reject(tlsSocket.authorizationError);
               return;
             }
-            resolve3({
+            resolve2({
               socket: tlsSocket,
               secure: true
             });
@@ -17676,7 +17676,7 @@ var require_aspromise = __commonJS({
       var params = new Array(arguments.length - 1), offset = 0, index = 2, pending = true;
       while (index < arguments.length)
         params[offset++] = arguments[index++];
-      return new Promise(function executor(resolve3, reject) {
+      return new Promise(function executor(resolve2, reject) {
         params[offset] = function callback(err) {
           if (pending) {
             pending = false;
@@ -17686,7 +17686,7 @@ var require_aspromise = __commonJS({
               var params2 = new Array(arguments.length - 1), offset2 = 0;
               while (offset2 < params2.length)
                 params2[offset2++] = arguments[offset2];
-              resolve3.apply(null, params2);
+              resolve2.apply(null, params2);
             }
           }
         };
@@ -20246,7 +20246,7 @@ var require_path = __commonJS({
         return prefix + parts.join("/");
       }
     );
-    path5.resolve = function resolve3(originPath, includePath, alreadyNormalized) {
+    path5.resolve = function resolve2(originPath, includePath, alreadyNormalized) {
       if (!alreadyNormalized)
         includePath = normalize(includePath);
       if (isAbsolute(includePath))
@@ -20603,7 +20603,7 @@ var require_mapfield = __commonJS({
         keepComments ? this.comment : void 0
       ]);
     };
-    MapField.prototype.resolve = function resolve3() {
+    MapField.prototype.resolve = function resolve2() {
       if (this.resolved)
         return this;
       if (types.mapKey[this.keyType] === void 0)
@@ -20680,7 +20680,7 @@ var require_method = __commonJS({
         this.parsedOptions
       ]);
     };
-    Method.prototype.resolve = function resolve3() {
+    Method.prototype.resolve = function resolve2() {
       if (this.resolved)
         return this;
       this.resolvedRequestType = this.parent.lookupType(this.requestType);
@@ -22298,7 +22298,7 @@ var require_field = __commonJS({
         keepComments ? this.comment : void 0
       ]);
     };
-    Field.prototype.resolve = function resolve3() {
+    Field.prototype.resolve = function resolve2() {
       if (this.resolved)
         return this;
       if ((this.typeDefault = types.defaults[this.type]) === void 0) {
@@ -22571,7 +22571,7 @@ var require_object = __commonJS({
       this.parent = null;
       this.resolved = false;
     };
-    ReflectionObject.prototype.resolve = function resolve3() {
+    ReflectionObject.prototype.resolve = function resolve2() {
       if (this.resolved)
         return this;
       if (this.root instanceof Root)
@@ -27543,18 +27543,18 @@ var require_compression_filter = __commonJS({
         this.maxRecvMessageLength = maxRecvMessageLength;
       }
       compressMessage(message) {
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve2, reject) => {
           zlib2.deflate(message, (err, output) => {
             if (err) {
               reject(err);
             } else {
-              resolve3(output);
+              resolve2(output);
             }
           });
         });
       }
       decompressMessage(message) {
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve2, reject) => {
           let totalLength = 0;
           const messageParts = [];
           const decompresser = zlib2.createInflate();
@@ -27576,7 +27576,7 @@ var require_compression_filter = __commonJS({
             }
           });
           decompresser.on("end", () => {
-            resolve3(Buffer.concat(messageParts));
+            resolve2(Buffer.concat(messageParts));
           });
           decompresser.write(message);
           decompresser.end();
@@ -27589,18 +27589,18 @@ var require_compression_filter = __commonJS({
         this.maxRecvMessageLength = maxRecvMessageLength;
       }
       compressMessage(message) {
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve2, reject) => {
           zlib2.gzip(message, (err, output) => {
             if (err) {
               reject(err);
             } else {
-              resolve3(output);
+              resolve2(output);
             }
           });
         });
       }
       decompressMessage(message) {
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve2, reject) => {
           let totalLength = 0;
           const messageParts = [];
           const decompresser = zlib2.createGunzip();
@@ -27622,7 +27622,7 @@ var require_compression_filter = __commonJS({
             }
           });
           decompresser.on("end", () => {
-            resolve3(Buffer.concat(messageParts));
+            resolve2(Buffer.concat(messageParts));
           });
           decompresser.write(message);
           decompresser.end();
@@ -28972,7 +28972,7 @@ var require_http_proxy = __commonJS({
       options.headers = headers;
       const proxyAddressString = (0, subchannel_address_1.subchannelAddressToString)(address);
       trace2("Using proxy " + proxyAddressString + " to connect to " + options.path);
-      return new Promise((resolve3, reject) => {
+      return new Promise((resolve2, reject) => {
         const request = http.request(options);
         request.once("connect", (res, socket, head) => {
           request.removeAllListeners();
@@ -28983,7 +28983,7 @@ var require_http_proxy = __commonJS({
               socket.unshift(head);
             }
             trace2("Successfully established a plaintext connection to " + options.path + " through proxy " + proxyAddressString);
-            resolve3(socket);
+            resolve2(socket);
           } else {
             (0, logging_1.log)(constants_1.LogVerbosity.ERROR, "Failed to connect to " + options.path + " through proxy " + proxyAddressString + " with status " + res.statusCode);
             reject();
@@ -29971,7 +29971,7 @@ var require_transport = __commonJS({
         if (secureConnectResult.socket.closed) {
           return Promise.reject("Connection closed before starting HTTP/2 handshake");
         }
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve2, reject) => {
           var _a, _b, _c, _d, _e, _f, _g, _h;
           let remoteName = null;
           let realTarget = this.channelTarget;
@@ -30042,7 +30042,7 @@ var require_transport = __commonJS({
             session.removeAllListeners();
             secureConnectResult.socket.removeListener("close", closeHandler);
             secureConnectResult.socket.removeListener("error", errorHandler);
-            resolve3(new Http2Transport(session, address, options, remoteName));
+            resolve2(new Http2Transport(session, address, options, remoteName));
             this.session = null;
           });
           session.once("close", closeHandler);
@@ -30056,7 +30056,7 @@ var require_transport = __commonJS({
           if (proxiedSocket) {
             return proxiedSocket;
           } else {
-            return new Promise((resolve3, reject) => {
+            return new Promise((resolve2, reject) => {
               const closeCallback = () => {
                 reject(new Error("Socket closed"));
               };
@@ -30066,7 +30066,7 @@ var require_transport = __commonJS({
               const socket = net.connect(address, () => {
                 socket.removeListener("close", closeCallback);
                 socket.removeListener("error", errorCallback);
-                resolve3(socket);
+                resolve2(socket);
               });
               socket.once("close", closeCallback);
               socket.once("error", errorCallback);
@@ -33518,7 +33518,7 @@ var require_server_interceptors = __commonJS({
           } else {
             decompresser = zlib2.createGunzip();
           }
-          return new Promise((resolve3, reject) => {
+          return new Promise((resolve2, reject) => {
             let totalLength = 0;
             const messageParts = [];
             decompresser.on("error", (error) => {
@@ -33539,7 +33539,7 @@ var require_server_interceptors = __commonJS({
               }
             });
             decompresser.on("end", () => {
-              resolve3(Buffer.concat(messageParts));
+              resolve2(Buffer.concat(messageParts));
             });
             decompresser.write(messageContents);
             decompresser.end();
@@ -34150,10 +34150,10 @@ var require_server = __commonJS({
         bindOneAddress(address, boundPortObject) {
           this.trace("Attempting to bind " + (0, subchannel_address_1.subchannelAddressToString)(address));
           const http2Server = this.createHttp2Server(boundPortObject.credentials);
-          return new Promise((resolve3, reject) => {
+          return new Promise((resolve2, reject) => {
             const onError = (err) => {
               this.trace("Failed to bind " + (0, subchannel_address_1.subchannelAddressToString)(address) + " with error " + err.message);
-              resolve3({
+              resolve2({
                 port: "port" in address ? address.port : 1,
                 error: err.message
               });
@@ -34181,7 +34181,7 @@ var require_server = __commonJS({
               });
               boundPortObject.listeningServers.add(http2Server);
               this.trace("Successfully bound " + (0, subchannel_address_1.subchannelAddressToString)(boundSubchannelAddress));
-              resolve3({
+              resolve2({
                 port: "port" in boundSubchannelAddress ? boundSubchannelAddress.port : 1
               });
               http2Server.removeListener("error", onError);
@@ -34234,7 +34234,7 @@ var require_server = __commonJS({
           }
         }
         resolvePort(port) {
-          return new Promise((resolve3, reject) => {
+          return new Promise((resolve2, reject) => {
             let seenResolution = false;
             const resolverListener = (endpointList, attributes, serviceConfig, resolutionNote) => {
               if (seenResolution) {
@@ -34250,7 +34250,7 @@ var require_server = __commonJS({
                 reject(new Error(`No addresses resolved for port ${port}`));
                 return true;
               }
-              resolve3(addressList);
+              resolve2(addressList);
               return true;
             };
             const resolver = (0, resolver_1.createResolver)(port, resolverListener, this.options);
@@ -37981,17 +37981,17 @@ var require_grpc_exporter_transport = __commonJS({
             });
           }
         }
-        return new Promise((resolve3) => {
+        return new Promise((resolve2) => {
           const deadline = Date.now() + timeoutMillis;
           if (this._metadata == null) {
-            return resolve3({
+            return resolve2({
               error: new Error("metadata was null"),
               status: "failure"
             });
           }
           this._client.export(buffer, this._metadata, { deadline }, (err, response) => {
             if (err) {
-              resolve3({
+              resolve2({
                 status: "failure",
                 error: err
               });
@@ -38003,7 +38003,7 @@ var require_grpc_exporter_transport = __commonJS({
                 }
               }
             } else {
-              resolve3({
+              resolve2({
                 data: response,
                 status: "success"
               });
@@ -38220,7 +38220,7 @@ var init_is_export_retryable = __esm({
 import * as zlib from "zlib";
 import { Readable } from "stream";
 function sendWithHttp(request, url, headers, compression, userAgent, agent, data, timeoutMillis) {
-  return new Promise((resolve3) => {
+  return new Promise((resolve2) => {
     const parsedUrl = new URL(url);
     if (userAgent) {
       headers["User-Agent"] = `${userAgent} ${DEFAULT_USER_AGENT}`;
@@ -38239,7 +38239,7 @@ function sendWithHttp(request, url, headers, compression, userAgent, agent, data
         responseSize += chunk.length;
         if (responseSize > MAX_RESPONSE_BODY_SIZE) {
           const sizeError = new Error(`OTLP export response body exceeded size limit of ${MAX_RESPONSE_BODY_SIZE} bytes`);
-          resolve3({ status: "failure", error: sizeError });
+          resolve2({ status: "failure", error: sizeError });
           res.destroy();
           return;
         }
@@ -38247,18 +38247,18 @@ function sendWithHttp(request, url, headers, compression, userAgent, agent, data
       });
       res.on("end", () => {
         if (res.statusCode && res.statusCode <= 299) {
-          resolve3({
+          resolve2({
             status: "success",
             data: Buffer.concat(responseData)
           });
         } else if (res.statusCode && isExportHTTPErrorRetryable(res.statusCode)) {
-          resolve3({
+          resolve2({
             status: "retryable",
             retryInMillis: parseRetryAfterToMills(res.headers["retry-after"])
           });
         } else {
           const error = new OTLPExporterError(res.statusMessage, res.statusCode, Buffer.concat(responseData).toString());
-          resolve3({
+          resolve2({
             status: "failure",
             error
           });
@@ -38266,17 +38266,17 @@ function sendWithHttp(request, url, headers, compression, userAgent, agent, data
       });
       res.on("error", (error) => {
         if (res.statusCode && res.statusCode <= 299) {
-          resolve3({
+          resolve2({
             status: "success"
           });
         } else if (res.statusCode && isExportHTTPErrorRetryable(res.statusCode)) {
-          resolve3({
+          resolve2({
             status: "retryable",
             error,
             retryInMillis: parseRetryAfterToMills(res.headers["retry-after"])
           });
         } else {
-          resolve3({
+          resolve2({
             status: "failure",
             error
           });
@@ -38285,26 +38285,26 @@ function sendWithHttp(request, url, headers, compression, userAgent, agent, data
     });
     req.setTimeout(timeoutMillis, () => {
       req.destroy();
-      resolve3({
+      resolve2({
         status: "retryable",
         error: new Error("Request timed out")
       });
     });
     req.on("error", (error) => {
       if (isHttpTransportNetworkErrorRetryable(error)) {
-        resolve3({
+        resolve2({
           status: "retryable",
           error
         });
       } else {
-        resolve3({
+        resolve2({
           status: "failure",
           error
         });
       }
     });
     compressAndSend(req, compression, data, (error) => {
-      resolve3({
+      resolve2({
         status: "failure",
         error
       });
@@ -38416,9 +38416,9 @@ var init_retrying_transport = __esm({
         this._transport = transport;
       }
       retry(data, timeoutMillis, inMillis) {
-        return new Promise((resolve3, reject) => {
+        return new Promise((resolve2, reject) => {
           setTimeout(() => {
-            this._transport.send(data, timeoutMillis).then(resolve3, reject);
+            this._transport.send(data, timeoutMillis).then(resolve2, reject);
           }, inMillis);
         });
       }
@@ -41693,7 +41693,6 @@ var PLUGIN_HOME = path.join(
   "huaweicloud-agentarts-observation-dsh-plugin"
 );
 var CONFIG_PATH = path.join(PLUGIN_HOME, "config.json");
-var LEGACY_METRICS_HOME = path.join(os.homedir(), ".dsh-metrics");
 var DEFAULT_CONFIG = {
   // 基础配置
   version: "1.0.0",
@@ -42026,10 +42025,6 @@ function resolveOutputDir(config) {
         outputDir = path.join(`${driveMatch[1].toUpperCase()}:\\`, driveMatch[2]);
       }
     }
-  }
-  const legacyData = path.join(LEGACY_METRICS_HOME, "data");
-  if (path.resolve(outputDir) === path.resolve(legacyData)) {
-    outputDir = path.join(PLUGIN_HOME, "data");
   }
   return outputDir;
 }
@@ -44088,7 +44083,7 @@ async function shutdownOtel() {
 var ConfigSchema = {
   "~standard": {
     version: 1,
-    vendor: "dsh-metrics",
+    vendor: "agentarts-dsh",
     validate(value) {
       if (value === null || value === void 0) return { value: { enabled: true } };
       return { value: { enabled: value.enabled !== false } };
@@ -44217,7 +44212,7 @@ var DshMetricsPlugin = class {
         await shutdownOtel();
         log("[agentarts-dsh] plugin unloaded");
       },
-      "dsh-metrics: detach listeners and shutdown OTLP"
+      "agentarts-dsh: detach listeners and shutdown OTLP"
     );
     const traceEndpoint = config.otel?.agentarts_agentops_apm_exporter_endpoint ?? "(not configured)";
     const metricEndpoint = config.otel?.agentarts_agentops_aom_exporter_endpoint ?? "(not configured)";

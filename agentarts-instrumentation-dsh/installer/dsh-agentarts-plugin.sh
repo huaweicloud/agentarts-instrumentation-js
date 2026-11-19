@@ -59,9 +59,7 @@ PLUGIN_HOME="$HOME/.dsh/plugins/$PLUGIN_DIR_NAME"
 CONFIG_PATH="$PLUGIN_HOME/config.json"
 # config.json 的历史备份保留份数（备份含明文凭据，无限累积会扩大暴露面）
 MAX_CONFIG_BACKUPS=5
-# 旧版配置目录（一次性迁移源；仅 install 读取复制，运行时不再写入）
-LEGACY_METRICS_CONFIG="$HOME/.dsh-metrics/config.json"
-LEGACY_METRICS_HOME="$HOME/.dsh-metrics"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── 子命令解析（首个非 - 开头参数；缺省 install） ────────────────────────
@@ -299,18 +297,6 @@ EOF
 # 从 Git 安装插件的用户，可单独运行 configure 子命令写入接入信息。
 write_plugin_config() {
     # config.json 生成/合并（备份 -> 合并，不动无关字段）
-    # 旧版配置一次性迁移（独立于 --skip-config）：新路径无 config.json 且旧 ~/.dsh-metrics/
-    # 存在 → 复制（旧文件保留）。配置是用户数据；data/ 历史日志一并复制，保持排查记录连续。
-    if [ ! -f "$CONFIG_PATH" ] && [ -f "$LEGACY_METRICS_CONFIG" ]; then
-        mkdir -p "$PLUGIN_HOME"
-        cp "$LEGACY_METRICS_CONFIG" "$CONFIG_PATH"
-        info "config migrated from legacy location (original kept): $LEGACY_METRICS_CONFIG -> $CONFIG_PATH"
-        if [ -d "$LEGACY_METRICS_HOME/data" ] && [ ! -d "$PLUGIN_HOME/data" ]; then
-            cp -r "$LEGACY_METRICS_HOME/data" "$PLUGIN_HOME/data"
-            info "historical logs migrated from legacy location (original kept): $LEGACY_METRICS_HOME/data"
-        fi
-        SUMMARY+=("config: migrated from legacy ~/.dsh-metrics/")
-    fi
 
     # DSH 版本探测（resource_version 自动取运行中 DSH 版本；探测失败兜底 "default"）
     if [ -z "$RESOURCE_VERSION" ]; then

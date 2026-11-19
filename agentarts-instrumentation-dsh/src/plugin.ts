@@ -21,7 +21,7 @@ import { PROBE_VERSION } from "./probe-version.generated.js"
 const ConfigSchema = {
   "~standard": {
     version: 1,
-    vendor: "dsh-metrics",
+    vendor: "agentarts-dsh",
     validate(value: any) {
       if (value === null || value === undefined) return { value: { enabled: true } }
       return { value: { enabled: value.enabled !== false } }
@@ -156,7 +156,7 @@ export default class DshMetricsPlugin {
         await shutdownOtel()
         log("[agentarts-dsh] plugin unloaded")
       },
-      "dsh-metrics: detach listeners and shutdown OTLP"
+      "agentarts-dsh: detach listeners and shutdown OTLP"
     )
     const traceEndpoint = config.otel?.agentarts_agentops_apm_exporter_endpoint ?? "(not configured)"
     const metricEndpoint = config.otel?.agentarts_agentops_aom_exporter_endpoint ?? "(not configured)"
