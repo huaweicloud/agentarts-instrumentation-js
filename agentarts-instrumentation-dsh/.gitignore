@@ -6,4 +6,7 @@ dist/*
 !dist/plugin.mjs
 *.tgz
 *.bak.*
+# 运行时配置含明文凭据，绝不入库（模板见 config.example.json）
+config.json
+config.local.json
 .DS_Store

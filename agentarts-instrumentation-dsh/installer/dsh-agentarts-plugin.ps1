@@ -358,6 +358,40 @@ function Ensure-Profile([string]$Name) {
     return $dir
 }
 
+# ── 凭据与敏感文件处理 ────────────────────────────────────────────────
+# 凭据支持从环境变量读取，避免出现在命令行（会进入 shell 历史与进程列表）。
+function Resolve-CredentialInputs {
+    $fromParam = @()
+    if (-not $script:Token -and $env:DSH_AGENTARTS_APM_TOKEN) {
+        $script:Token = $env:DSH_AGENTARTS_APM_TOKEN
+        Write-Info "token: from env DSH_AGENTARTS_APM_TOKEN"
+    } elseif ($script:Token) { $fromParam += "-Token" }
+    if (-not $script:AomAccessCode -and $env:DSH_AGENTARTS_AOM_ACCESS_CODE) {
+        $script:AomAccessCode = $env:DSH_AGENTARTS_AOM_ACCESS_CODE
+        Write-Info "aom access code: from env DSH_AGENTARTS_AOM_ACCESS_CODE"
+    } elseif ($script:AomAccessCode) { $fromParam += "-AomAccessCode" }
+    if ($fromParam.Count -gt 0) {
+        Write-Warn ("credentials on the command line ({0}) are visible in shell history and process list; prefer DSH_AGENTARTS_APM_TOKEN / DSH_AGENTARTS_AOM_ACCESS_CODE" -f ($fromParam -join ', '))
+    }
+}
+
+# 收紧含明文凭据的文件权限：移除继承，仅当前用户、SYSTEM、Administrators。
+# 用 SID 而非组名，避免多语言系统上组名不匹配。
+function Protect-SecretFile([string]$Path) {
+    if (-not $Path -or -not (Test-Path $Path)) { return }
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $me = "$env:USERDOMAIN\$env:USERNAME"
+        $null = icacls $Path /inheritance:r /grant:r "${me}:(F)" "*S-1-5-18:(F)" "*S-1-5-32-544:(F)" 2>&1
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+    if ($code -eq 0) { Write-Info "  permissions restricted: $(Split-Path $Path -Leaf)" }
+    else { Write-Warn "  could not restrict permissions on $(Split-Path $Path -Leaf) (continue)" }
+}
+
 # ── 配置写入（install 与 configure 共用）───────────────────────────────
 # 只生成/合并 config.json，不触碰 profile。已通过 DSH 插件界面或 dsh plugin add
 # 从 Git 安装插件的用户，可单独运行 configure 子命令写入接入信息。
@@ -419,22 +453,31 @@ function Write-PluginConfig {
     if ($otel.Count -gt 0) { $updates["otel"] = $otel }
 
     $updatesFile = Join-Path $env:TEMP "dsh-observation-updates-$PID.json"
-    # PS 5.1 的 Set-Content -Encoding utf8 会写 BOM，node JSON.parse 会因 \uFEFF 报
-    # "is not valid JSON"；用 .NET API 显式写无 BOM UTF-8（pwsh 7/5.1 通用）。
-    [System.IO.File]::WriteAllText(
-        $updatesFile,
-        ($updates | ConvertTo-Json -Depth 10),
-        (New-Object System.Text.UTF8Encoding($false)))
-    $out = Invoke-NodeScript $script:NodeMergeConfig @($script:MetricsConfig, $updatesFile)
-    Remove-Item $updatesFile -Force -ErrorAction SilentlyContinue
-    if ($LASTEXITCODE -ne 0) { Write-Err "config generation failed: $out"; exit 1 }
-    Write-Info "config: $($out -join ' ')"
-    $script:SummarySteps.Add("config: $script:MetricsConfig ($($(if ($configExists) { 'merged' } else { 'generated' })))")
+    try {
+        # PS 5.1 的 Set-Content -Encoding utf8 会写 BOM，node JSON.parse 会因 \uFEFF 报
+        # "is not valid JSON"；用 .NET API 显式写无 BOM UTF-8（pwsh 7/5.1 通用）。
+        [System.IO.File]::WriteAllText(
+            $updatesFile,
+            ($updates | ConvertTo-Json -Depth 10),
+            (New-Object System.Text.UTF8Encoding($false)))
+        $out = Invoke-NodeScript $script:NodeMergeConfig @($script:MetricsConfig, $updatesFile)
+        if ($LASTEXITCODE -ne 0) { Write-Err "config generation failed: $out"; exit 1 }
+        Write-Info "config: $($out -join ' ')"
+        $script:SummarySteps.Add("config: $script:MetricsConfig ($($(if ($configExists) { 'merged' } else { 'generated' })))")
+    } finally {
+        # 该临时文件含明文凭据：任何退出路径（含失败 exit）都必须删除
+        Remove-Item $updatesFile -Force -ErrorAction SilentlyContinue
+    }
+
+    # 收紧 config.json 与历史备份的权限（备份同样含明文凭据）
+    Protect-SecretFile $script:MetricsConfig
+    Get-ChildItem "$($script:MetricsConfig).bak.*" -ErrorAction SilentlyContinue | ForEach-Object { Protect-SecretFile $_.FullName }
 }
 
 # ── configure 子命令（只写配置，不安装、不改 profile）──────────────────
 function Invoke-Configure {
     Write-Info "configure mode: writes $($script:MetricsConfig) only; the plugin must already be installed"
+    Resolve-CredentialInputs
     $configExists = Test-Path $script:MetricsConfig
     $required = @("AgentId", "DomainId", "ProjectId", "Endpoint", "Token", "AomEndpoint", "AomAccessCode", "AomPrometheusId")
     if (-not $configExists) {
@@ -457,6 +500,8 @@ function Invoke-Install {
     Resolve-DshCli
     $packageSource = Resolve-PackageSource
     Write-Info "plugin package: $packageSource"
+
+    Resolve-CredentialInputs
 
     # 业务参数校验（config.json 不存在时必填）
     $configExists = Test-Path $script:MetricsConfig

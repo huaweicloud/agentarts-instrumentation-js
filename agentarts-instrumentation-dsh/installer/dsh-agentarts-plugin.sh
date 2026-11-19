@@ -173,6 +173,17 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+# 凭据支持从环境变量读取，避免出现在命令行（会进入 shell 历史与进程列表）
+if [ -z "$TOKEN" ] && [ -n "${DSH_AGENTARTS_APM_TOKEN:-}" ]; then
+    TOKEN="$DSH_AGENTARTS_APM_TOKEN"; info "token: from env DSH_AGENTARTS_APM_TOKEN"
+fi
+if [ -z "$AOM_ACCESS_CODE" ] && [ -n "${DSH_AGENTARTS_AOM_ACCESS_CODE:-}" ]; then
+    AOM_ACCESS_CODE="$DSH_AGENTARTS_AOM_ACCESS_CODE"; info "aom access code: from env DSH_AGENTARTS_AOM_ACCESS_CODE"
+fi
+if [ -n "$TOKEN" ] && [ -z "${DSH_AGENTARTS_APM_TOKEN:-}" ]; then
+    warn "credentials on the command line are visible in shell history and process list; prefer DSH_AGENTARTS_APM_TOKEN / DSH_AGENTARTS_AOM_ACCESS_CODE"
+fi
+
 # ── dsh CLI 定位：PATH -> checkout（node+tsx -> pnpm dsh） ──────────────
 DSH_MODE=""
 DSH_ROOT_RESOLVED=""
@@ -323,6 +334,8 @@ write_plugin_config() {
         ENDPOINT_PORT=""; [ -n "$ENDPOINT" ] && ENDPOINT_PORT="$(normalize_endpoint_input "$ENDPOINT")"
         AOM_ENDPOINT_PORT=""; [ -n "$AOM_ENDPOINT" ] && AOM_ENDPOINT_PORT="$(normalize_endpoint_input "$AOM_ENDPOINT")"
         updates_file="$(mktemp)"
+        # 该临时文件含明文凭据：即使后续失败退出也要删除
+        trap 'rm -f "$updates_file"' EXIT
         AGENT_ID="$AGENT_ID" AGENT_NAME="$AGENT_NAME" LINK_SUBAGENT_TRACE="$LINK_SUBAGENT_TRACE" DOMAIN_ID="$DOMAIN_ID" PROJECT_ID="$PROJECT_ID" \
         RESOURCE_TYPE="$RESOURCE_TYPE" RESOURCE_VERSION="$RESOURCE_VERSION" \
         TOKEN="$TOKEN" ENDPOINT_PORT="$ENDPOINT_PORT" AOM_ACCESS_CODE="$AOM_ACCESS_CODE" \
@@ -397,8 +410,13 @@ console.log('written: ' + configPath + ' (' + (existed ? 'merged' : 'generated')
 NODE_MERGE
 )" || { err "config generation failed: $out"; exit 1; }
         rm -f "$updates_file"
+        trap - EXIT
         info "config: $out"
         SUMMARY+=("config: $CONFIG_PATH ($([ "$CONFIG_EXISTS" -eq 1 ] && echo merged || echo generated))")
+        # 收紧含明文凭据的文件权限（含历史备份）；Windows/MSYS 下 chmod 可能无效，忽略失败
+        chmod 700 "$PLUGIN_HOME" 2>/dev/null || true
+        chmod 600 "$CONFIG_PATH" 2>/dev/null || true
+        for _bak in "$CONFIG_PATH".bak.*; do [ -f "$_bak" ] && chmod 600 "$_bak" 2>/dev/null; done
     fi
 
     echo ""
