@@ -43,7 +43,21 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
 ```
 
 - **trace 结构**：每个 turn 一个 `invoke_agent` root span，其下按 step 组织 `react step`，包含 `chat <model>`（LLM 调用）与 `execute_tool <tool>`（工具调用）；`features.linkSubagentTrace` 开启时，子 agent 的 root span 以父 trace 为 parent。
+
 - **metric 清单**：token（input/output/cache）、请求数、LLM 耗时、TTFT/TBT、agent 耗时、工具调用数/耗时、技能调用数/耗时/失败数、会话/用量状态 gauge；点号命名指标同时注册下划线别名（对齐 AOM 的 `_seconds` 后缀转换规则）。
+
+#### 子 agent trace 串联的边界
+
+子 agent 的 root span 以**父 turn 正在进行中的 root span** 为 parent。父 turn 结束后，它注册的父子关联即被释放，因此：
+
+- **父 turn 进行中启动的子 agent** → 与父 trace 同链路，层级正确。
+- **父 turn 结束后才启动的子 agent**（例如父委派后立即返回、子 agent 在后台继续长跑）→ **不会串联**，子 agent 形成独立 trace。
+
+这是当前实现的有意取舍：串联只依赖父 turn 存活期间建立的关联，不做跨 turn 缓冲。
+
+无论是否串联，子 agent 的 span 都会带 `dsh.session.parent_id` 与 `dsh.session.delegation_depth` 属性，因此**仍可按父会话 ID 过滤或聚合子 span**——即使它们落在不同 trace 中。
+
+若场景中存在"父 turn 结束后子 agent 才启动"的异步委派，分析时请以 `dsh.session.parent_id` 为准，而非仅看 trace 层级。
 
 ## 运行配置
 
