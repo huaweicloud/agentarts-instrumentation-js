@@ -592,6 +592,8 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
   let totalInputTokens = 0
   let totalOutputTokens = 0
   let totalTokens = 0
+  let totalCacheReadTokens = 0
+  let totalCacheWriteTokens = 0
   const stepUnits = new Map<string, StepUnit>()
   for (const [stepId, stepEvents] of steps) {
     const req = stepEvents.find((e) => e["event.name"] === "llm.request")
@@ -693,6 +695,8 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
             totalInputTokens += callResp.inputTokens || 0
             totalOutputTokens += callResp.outputTokens || 0
             totalTokens += callResp.totalTokens || 0
+            totalCacheReadTokens += callResp.cacheReadTokens || 0
+            totalCacheWriteTokens += callResp.cacheWriteTokens || 0
           }
         })
         const toolSubGroups = new Map<string, TurnEventRecord[]>()
@@ -751,9 +755,16 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
   }
   if (rootSpan) {
     try {
-      rootSpan.setAttribute("gen_ai.usage.input_tokens", totalInputTokens)
-      rootSpan.setAttribute("gen_ai.usage.output_tokens", totalOutputTokens)
-      rootSpan.setAttribute("gen_ai.usage.total_tokens", totalTokens)
+      const usageAttrs = rootUsageAttributes({
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        totalTokens,
+        cacheReadTokens: totalCacheReadTokens,
+        cacheWriteTokens: totalCacheWriteTokens
+      })
+      for (const [key, value] of Object.entries(usageAttrs)) {
+        rootSpan.setAttribute(key, value)
+      }
       const failedResponse = [...events].reverse().find((e) => e["event.name"] === "llm.response" && e["error.type"])
       if (failedResponse) {
         const errMsg = String(failedResponse["error.message"] || failedResponse["error.type"]).slice(0, 500)
@@ -767,13 +778,64 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
       log("[dsh-metrics] OTel root agent span ended:", turnId, {
         totalInputTokens,
         totalOutputTokens,
-        totalTokens
+        totalTokens,
+        totalCacheReadTokens,
+        totalCacheWriteTokens
       })
     } catch (error) {
       logError("[dsh-metrics] OTel root agent span end failed:", { turnId, error })
     }
   }
   return rootSpanCtx
+}
+
+/**
+ * 从一次 LLM 调用的事件中提取 token 用量。
+ *
+ * 单次 LLM span 与根 span 的累计值都走这里，保证两处口径一致——
+ * 尤其是缓存读写 token：它们只出现在 llm.response 事件上，
+ * 早期实现漏掉了它们，导致根节点没有累计值。
+ */
+export function llmUsageFromEvents(events: TurnEventRecord[]) {
+  const responseEvent = events.find((e) => e["event.name"] === "llm.response")
+  if (!responseEvent) return null
+  const num = (value: unknown) => (typeof value === "number" ? value : 0)
+  return {
+    inputTokens: num(responseEvent["gen_ai.usage.input_tokens"]),
+    outputTokens: num(responseEvent["gen_ai.usage.output_tokens"]),
+    totalTokens: num(responseEvent["gen_ai.usage.total_tokens"]),
+    cacheReadTokens: num(responseEvent["gen_ai.usage.cache_read.input_tokens"]),
+    cacheWriteTokens: num(responseEvent["gen_ai.usage.cache_write.input_tokens"])
+  }
+}
+
+/**
+ * 根 span 的 token 用量属性。
+ *
+ * 缓存读写 token 与 input/output 同一口径在根节点汇总；为 0 时不写属性，
+ * 避免为未启用缓存的调用产出无意义的 0。
+ */
+export function rootUsageAttributes(totals: {
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+  cacheReadTokens: number
+  cacheWriteTokens: number
+}) {
+  const attrs: Record<string, number> = {
+    "gen_ai.usage.input_tokens": totals.inputTokens,
+    "gen_ai.usage.output_tokens": totals.outputTokens,
+    "gen_ai.usage.total_tokens": totals.totalTokens
+  }
+  if (totals.cacheReadTokens > 0) {
+    attrs["gen_ai.usage.cache_read.input_tokens"] = totals.cacheReadTokens
+  }
+  if (totals.cacheWriteTokens > 0) {
+    attrs["gen_ai.usage.cache_write.input_tokens"] = totals.cacheWriteTokens
+    // 与单次 LLM span 保持一致：cache_creation 是 cache_write 的别名
+    attrs["gen_ai.usage.cache_creation.input_tokens"] = totals.cacheWriteTokens
+  }
+  return attrs
 }
 
 function processLlmSpan(events: TurnEventRecord[]) {
@@ -913,11 +975,7 @@ function processLlmSpan(events: TurnEventRecord[]) {
     }
   }
   if (responseEvent) {
-    return {
-      inputTokens: typeof responseEvent["gen_ai.usage.input_tokens"] === "number" ? responseEvent["gen_ai.usage.input_tokens"] : 0,
-      outputTokens: typeof responseEvent["gen_ai.usage.output_tokens"] === "number" ? responseEvent["gen_ai.usage.output_tokens"] : 0,
-      totalTokens: typeof responseEvent["gen_ai.usage.total_tokens"] === "number" ? responseEvent["gen_ai.usage.total_tokens"] : 0
-    }
+    return llmUsageFromEvents(events)
   }
   return null
 }

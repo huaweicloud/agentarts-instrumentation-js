@@ -43363,6 +43363,8 @@ function processTurn(turnId, events, handle) {
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let totalTokens = 0;
+  let totalCacheReadTokens = 0;
+  let totalCacheWriteTokens = 0;
   const stepUnits = /* @__PURE__ */ new Map();
   for (const [stepId, stepEvents] of steps) {
     const req = stepEvents.find((e) => e["event.name"] === "llm.request");
@@ -43463,6 +43465,8 @@ function processTurn(turnId, events, handle) {
             totalInputTokens += callResp.inputTokens || 0;
             totalOutputTokens += callResp.outputTokens || 0;
             totalTokens += callResp.totalTokens || 0;
+            totalCacheReadTokens += callResp.cacheReadTokens || 0;
+            totalCacheWriteTokens += callResp.cacheWriteTokens || 0;
           }
         });
         const toolSubGroups = /* @__PURE__ */ new Map();
@@ -43521,9 +43525,16 @@ function processTurn(turnId, events, handle) {
   }
   if (rootSpan) {
     try {
-      rootSpan.setAttribute("gen_ai.usage.input_tokens", totalInputTokens);
-      rootSpan.setAttribute("gen_ai.usage.output_tokens", totalOutputTokens);
-      rootSpan.setAttribute("gen_ai.usage.total_tokens", totalTokens);
+      const usageAttrs = rootUsageAttributes({
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        totalTokens,
+        cacheReadTokens: totalCacheReadTokens,
+        cacheWriteTokens: totalCacheWriteTokens
+      });
+      for (const [key, value] of Object.entries(usageAttrs)) {
+        rootSpan.setAttribute(key, value);
+      }
       const failedResponse = [...events].reverse().find((e) => e["event.name"] === "llm.response" && e["error.type"]);
       if (failedResponse) {
         const errMsg = String(failedResponse["error.message"] || failedResponse["error.type"]).slice(0, 500);
@@ -43537,13 +43548,42 @@ function processTurn(turnId, events, handle) {
       log("[dsh-metrics] OTel root agent span ended:", turnId, {
         totalInputTokens,
         totalOutputTokens,
-        totalTokens
+        totalTokens,
+        totalCacheReadTokens,
+        totalCacheWriteTokens
       });
     } catch (error) {
       logError("[dsh-metrics] OTel root agent span end failed:", { turnId, error });
     }
   }
   return rootSpanCtx;
+}
+function llmUsageFromEvents(events) {
+  const responseEvent = events.find((e) => e["event.name"] === "llm.response");
+  if (!responseEvent) return null;
+  const num = (value) => typeof value === "number" ? value : 0;
+  return {
+    inputTokens: num(responseEvent["gen_ai.usage.input_tokens"]),
+    outputTokens: num(responseEvent["gen_ai.usage.output_tokens"]),
+    totalTokens: num(responseEvent["gen_ai.usage.total_tokens"]),
+    cacheReadTokens: num(responseEvent["gen_ai.usage.cache_read.input_tokens"]),
+    cacheWriteTokens: num(responseEvent["gen_ai.usage.cache_write.input_tokens"])
+  };
+}
+function rootUsageAttributes(totals) {
+  const attrs = {
+    "gen_ai.usage.input_tokens": totals.inputTokens,
+    "gen_ai.usage.output_tokens": totals.outputTokens,
+    "gen_ai.usage.total_tokens": totals.totalTokens
+  };
+  if (totals.cacheReadTokens > 0) {
+    attrs["gen_ai.usage.cache_read.input_tokens"] = totals.cacheReadTokens;
+  }
+  if (totals.cacheWriteTokens > 0) {
+    attrs["gen_ai.usage.cache_write.input_tokens"] = totals.cacheWriteTokens;
+    attrs["gen_ai.usage.cache_creation.input_tokens"] = totals.cacheWriteTokens;
+  }
+  return attrs;
 }
 function processLlmSpan(events) {
   const requestEvent = events.find((e) => e["event.name"] === "llm.request");
@@ -43678,11 +43718,7 @@ function processLlmSpan(events) {
     }
   }
   if (responseEvent) {
-    return {
-      inputTokens: typeof responseEvent["gen_ai.usage.input_tokens"] === "number" ? responseEvent["gen_ai.usage.input_tokens"] : 0,
-      outputTokens: typeof responseEvent["gen_ai.usage.output_tokens"] === "number" ? responseEvent["gen_ai.usage.output_tokens"] : 0,
-      totalTokens: typeof responseEvent["gen_ai.usage.total_tokens"] === "number" ? responseEvent["gen_ai.usage.total_tokens"] : 0
-    };
+    return llmUsageFromEvents(events);
   }
   return null;
 }
