@@ -2,6 +2,9 @@
 
 DSH（DeepSeek Harness）可观测插件：采集 DSH 运行时的 **trace**（会话/turn/step、LLM 调用、工具调用、子 agent 串联）与 **metric**（token 用量、耗时、TTFT/TBT、工具/技能统计），经 OTLP gRPC 上报华为云 **AgentArts** 平台——trace 到 **APM**，metric 到 **AOM**。
 
+> 面向最终用户的完整接入流程（获取参数 → 安装 → 验证 → 查看数据 → 常见问题）见
+> [docs/接入指导.md](docs/接入指导.md)。本文档偏工程实现与仓库说明。
+
 ## 仓库结构
 
 ```
