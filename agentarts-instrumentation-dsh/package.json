@@ -1,7 +1,7 @@
 {
   "name": "huaweicloud-agentarts-observation-dsh-plugin",
   "version": "1.0.0",
-  "description": "DSH AgentArts Observation Plugin - 采集 DeepSeek Harness 指标并上报华为云 AgentArts（APM/AOM）",
+  "description": "DSH AgentArts Observation Plugin - 采集 DeepSeek Harness 运行时的trace和metric数据并上报华为云 AgentArts（APM/AOM）",
   "main": "dist/plugin.mjs",
   "type": "module",
   "exports": {
@@ -35,7 +35,7 @@
     "opentelemetry",
     "agentarts"
   ],
-  "author": "",
+  "author": "huaweicloud",
   "license": "Apache-2.0",
   "engines": {
     "node": ">=24.9.0",
