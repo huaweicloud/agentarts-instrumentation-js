@@ -55,7 +55,7 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
 
 这是当前实现的有意取舍：串联只依赖父 turn 存活期间建立的关联，不做跨 turn 缓冲。
 
-无论是否串联，子 agent 的 span 都会带 `dsh.session.parent_id` 与 `dsh.session.delegation_depth` 属性，因此**仍可按父会话 ID 过滤或聚合子 span**——即使它们落在不同 trace 中。
+无论是否串联，子 agent 的 span 都会带 `dsh.session.parent_id` 属性，因此**仍可按父会话 ID 过滤或聚合子 span**——即使它们落在不同 trace 中。
 
 **span 命名**：子 agent 收到 `subagent/catalog` 名称时用该名称（如 `invoke_agent researcher`）；拿不到名称时统一兜底为 `invoke_agent subagent`，不会回退成父 agent 的名字——否则父子 span 同名，在 APM 列表里无法区分。
 
@@ -92,9 +92,8 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
 | 会话内容 | `gen_ai.input.messages`、`gen_ai.output.messages` | 用户消息与助手回复的文本 |
 | 系统提示词 | `gen_ai.system_instructions` | 会话使用的 system prompt，可能含内部指令 |
 | 工具调用 | `gen_ai.tool.call.arguments`、`gen_ai.tool.call.result` | 工具参数与返回结果原文 |
-| 本地路径 | `agent.dsh.cwd` | 当前工作目录，通常包含用户名 |
 | 设备标识 | `user.id` | 未配置时取主机名 |
-| 会话标识 | `gen_ai.session.id`、`gen_ai.turn.id` | 会话与轮次 ID |
+| 会话标识 | `gen_ai.session.id` | 会话 ID |
 
 此外还会上报 span 结构、耗时、token 用量、模型名等运行指标——这些不含内容文本。
 

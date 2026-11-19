@@ -42300,11 +42300,8 @@ function scalarAttributes(session, turn, agentName2) {
     "gen_ai.turn.id": `${String(session.id)}:${turn}`,
     "dsh.session.id": String(session.id),
     "dsh.turn": turn,
-    ...header.cwd === void 0 ? {} : { "agent.dsh.cwd": header.cwd },
     ...header.parentSession === void 0 ? {} : { "dsh.session.parent_id": String(header.parentSession) },
     ...header.origin === void 0 ? {} : { "dsh.session.origin": header.origin },
-    ...header.delegationDepth === void 0 ? {} : { "dsh.session.delegation_depth": header.delegationDepth },
-    ...header.agentPreset === void 0 ? {} : { "dsh.agent.preset": header.agentPreset },
     // gen_ai.agent.name 从配置 agent_name 读取（为空兜底 deepseek-harness）
     "gen_ai.agent.name": agentName2 || "deepseek-harness"
   };
@@ -42319,7 +42316,6 @@ var DshTraceCoordinator = class {
     this.logger = logger;
   }
   sessions = /* @__PURE__ */ new Map();
-  eventCounter = 0;
   // ── 子 agent trace 串联（方案 B：提前创建 root span，无缓冲） ──
   // 活跃 turn 的 root span context 注册表：key = sessionId
   //（startTurn 时写入，closeTurn/disposeSession 时清除；子 turn/start 查父用）
@@ -42838,11 +42834,9 @@ var DshTraceCoordinator = class {
   // private: EventRecord 创建
   // -------------------------------------------------------------------------
   createBaseEvent(session, turn, eventName) {
-    const eventId = `${String(session.id)}:${turn}:${++this.eventCounter}`;
     const otel = this.config.otel;
     return {
       "time_unix_nano": nowNanos(),
-      "event.id": eventId,
       "trace_id": `${String(session.id)}:${turn}`,
       "gen_ai.session.id": String(session.id),
       "gen_ai.turn.id": `${String(session.id)}:${turn}`,
@@ -43230,7 +43224,6 @@ function beginRootSpan(startTime, parentContext, agentName2, isSubagent = false)
     const span = tracer.startSpan(spanName, { startTime }, spanCtx);
     span.setAttribute("gen_ai.operation.name", "invoke_agent");
     span.setAttribute("gen_ai.span.kind", "AGENT");
-    span.setAttribute("gen_ai.call.type", "SDK");
     if (parentContext) span.setAttribute("dsh.subagent", true);
     const sc = span.spanContext();
     log("[dsh-metrics] OTel root span begun:", {
@@ -43326,7 +43319,6 @@ function processTurn(turnId, events, handle) {
       }
       rootSpan.setAttribute("gen_ai.operation.name", "invoke_agent");
       rootSpan.setAttribute("gen_ai.span.kind", "AGENT");
-      rootSpan.setAttribute("gen_ai.call.type", "SDK");
       if (captureContent()) {
         const inputMessages = otherEvent && otherEvent["gen_ai.input.messages"] || firstRequest && messagesWithRole(firstRequest, "gen_ai.input.messages", "user") || lastResponse && messagesWithRole(lastResponse, "gen_ai.input.messages", "user");
         const outputMessages = otherEvent && otherEvent["gen_ai.output.messages"] || lastResponse && messagesWithRole(lastResponse, "gen_ai.output.messages", "assistant") || firstRequest && messagesWithRole(firstRequest, "gen_ai.output.messages", "assistant");
@@ -43436,7 +43428,6 @@ function processTurn(turnId, events, handle) {
       if (stepSpan) {
         stepSpan.setAttribute("gen_ai.span.kind", "STEP");
         stepSpan.setAttribute("gen_ai.operation.name", "react_step");
-        stepSpan.setAttribute("gen_ai.step.id", unit.stepId);
         const lastRespEvent = sortByTime(unit.llmEvents).filter((e) => e["event.name"] === "llm.response").pop();
         const stepFinishReasons = lastRespEvent?.["gen_ai.response.finish_reasons"];
         const stepFinishReason = Array.isArray(stepFinishReasons) ? stepFinishReasons[0] : stepFinishReasons;
@@ -43612,9 +43603,7 @@ function processLlmSpan(events) {
       });
       span.setAttribute("gen_ai.operation.name", "chat");
       span.setAttribute("gen_ai.span.kind", "LLM");
-      span.setAttribute("gen_ai.call.type", "SDK");
       if (requestEvent) {
-        setAttr(span, "gen_ai.step.id", requestEvent["gen_ai.step.id"]);
         setAttr(span, "gen_ai.provider.name", requestEvent["gen_ai.provider.name"]);
         setAttr(span, "gen_ai.request.model", requestEvent["gen_ai.request.model"]);
         setAttr(span, "gen_ai.model.id", requestEvent["gen_ai.model.id"]);
@@ -43630,7 +43619,6 @@ function processLlmSpan(events) {
         }
       }
       if (responseEvent) {
-        setAttr(span, "gen_ai.step.id", responseEvent["gen_ai.step.id"]);
         setAttr(span, "gen_ai.provider.name", responseEvent["gen_ai.provider.name"]);
         setAttr(span, "gen_ai.request.model", responseEvent["gen_ai.request.model"]);
         setAttr(span, "gen_ai.response.model", responseEvent["gen_ai.response.model"]);
@@ -43749,14 +43737,12 @@ function processToolSpan(events, skipSkillMetrics = false) {
       span.setAttribute("gen_ai.operation.name", "execute_tool");
       span.setAttribute("gen_ai.span.kind", "TOOL");
       span.setAttribute("gen_ai.tool.type", "function");
-      span.setAttribute("gen_ai.call.type", "SDK");
       if (skillName) {
         setAttr(span, "gen_ai.skill.name", skillName);
       }
       if (callEvent) {
         setAttr(span, "gen_ai.tool.name", callEvent["gen_ai.tool.name"]);
         setAttr(span, "gen_ai.tool.call.id", callEvent["gen_ai.tool.call.id"]);
-        setAttr(span, "gen_ai.step.id", callEvent["gen_ai.step.id"]);
         if (captureContent()) {
           setAttr(span, "gen_ai.tool.call.arguments", callEvent["gen_ai.tool.call.arguments"]);
         }
@@ -43764,18 +43750,12 @@ function processToolSpan(events, skipSkillMetrics = false) {
       if (resultEvent) {
         setAttr(span, "gen_ai.tool.name", resultEvent["gen_ai.tool.name"]);
         setAttr(span, "gen_ai.tool.call.id", resultEvent["gen_ai.tool.call.id"]);
-        setAttr(span, "gen_ai.tool.call.duration", resultEvent["gen_ai.tool.call.duration"]);
-        setAttr(span, "gen_ai.step.id", resultEvent["gen_ai.step.id"]);
         if (captureContent()) {
           setAttr(span, "gen_ai.tool.call.result", resultEvent["gen_ai.tool.call.result"]);
         }
       }
       const toolCallStatus = resultEvent ? resultEvent["gen_ai.call.status"] !== false && resultEvent["gen_ai.call.status"] !== "false" : true;
       setAttr(span, "gen_ai.call.status", toolCallStatus);
-      const turnIdForTool = callEvent?.["gen_ai.turn.id"] || resultEvent?.["gen_ai.turn.id"];
-      if (turnIdForTool) {
-        setAttr(span, "gen_ai.turn.id", turnIdForTool);
-      }
       span.end(endTime);
       log("[dsh-metrics] OTel tool span created:", toolName, callId);
     } catch (error) {
@@ -43879,10 +43859,8 @@ function processToolSpan(events, skipSkillMetrics = false) {
 }
 function buildCommonSpanAttrs(event) {
   const attrs = {};
-  attrs["gen_ai.call.type"] = "SDK";
   if (event["gen_ai.conversation.id"]) attrs["gen_ai.conversation.id"] = event["gen_ai.conversation.id"];
   else if (event["gen_ai.session.id"]) attrs["gen_ai.conversation.id"] = event["gen_ai.session.id"];
-  if (event["gen_ai.turn.id"]) attrs["gen_ai.turn.id"] = event["gen_ai.turn.id"];
   if (event["user.id"]) attrs["gen_ai.user.id"] = event["user.id"];
   attrs["probe_version"] = PROBE_VERSION;
   if (event["domain.id"]) attrs["domain.id"] = event["domain.id"];
@@ -43893,15 +43871,8 @@ function buildCommonSpanAttrs(event) {
   if (event["gen_ai.agent.type"]) attrs["gen_ai.agent.type"] = event["gen_ai.agent.type"];
   if (event["gen_ai.agent.name"]) attrs["gen_ai.agent.name"] = event["gen_ai.agent.name"];
   if (event["resource_version"]) attrs["resource_version"] = event["resource_version"];
-  if (event["event.id"]) attrs["event.id"] = event["event.id"];
-  if (event["event.name"]) attrs["event.name"] = event["event.name"];
-  if (event["agent.dsh.cwd"]) attrs["agent.dsh.cwd"] = event["agent.dsh.cwd"];
   if (event["dsh.session.parent_id"]) attrs["dsh.session.parent_id"] = event["dsh.session.parent_id"];
-  if (event["dsh.session.delegation_depth"] !== void 0 && event["dsh.session.delegation_depth"] !== null) {
-    attrs["dsh.session.delegation_depth"] = event["dsh.session.delegation_depth"];
-  }
   if (event["dsh.session.origin"]) attrs["dsh.session.origin"] = event["dsh.session.origin"];
-  if (event["dsh.agent.preset"]) attrs["dsh.agent.preset"] = event["dsh.agent.preset"];
   return attrs;
 }
 function buildUsageStatusAttrs(event) {

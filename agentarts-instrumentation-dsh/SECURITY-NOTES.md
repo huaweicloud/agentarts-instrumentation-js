@@ -100,8 +100,8 @@ bash 版加 `trap ... EXIT`。
 1. **会话内容默认外发**：`features.captureMessageContent` 默认 `true`，会上报用户
    消息、助手回复、系统提示词、工具调用的参数与结果。这是产品设计选择，已在
    README、`config.example.json` 与插件描述中显著提示，并支持关闭。
-2. **本地环境信息**：`agent.dsh.cwd` 上报工作目录（可能含用户名）；`user.id`
-   未配置时取主机名。建议显式设置 `user.id`。
+2. **设备标识**：`user.id` 未配置时取主机名。建议显式设置 `user.id`。
+   （此前上报的 `agent.dsh.cwd` 工作目录已按要求移除，不再外发本地路径。）
 3. **凭据为明文文件**：未接入 Windows DPAPI / macOS Keychain 等系统密钥库。
    当前用"文件权限收紧"控制访问面。
 4. **TLS 未做证书 pinning**：使用系统根证书校验（grpc-js 默认），未固定证书。

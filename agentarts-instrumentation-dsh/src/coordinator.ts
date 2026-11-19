@@ -29,7 +29,6 @@ export interface RootSpanHandle {
 /** AgentArts 事件记录（gen_ai.* 规范字段 + 事件元数据） */
 export interface TurnEventRecord {
   "time_unix_nano": string
-  "event.id": string
   "event.name": string
   [key: string]: any
 }
@@ -187,11 +186,8 @@ function scalarAttributes(session: DshSession, turn: number, agentName: string) 
     "gen_ai.turn.id": `${String(session.id)}:${turn}`,
     "dsh.session.id": String(session.id),
     "dsh.turn": turn,
-    ...(header.cwd === undefined ? {} : { "agent.dsh.cwd": header.cwd }),
     ...(header.parentSession === undefined ? {} : { "dsh.session.parent_id": String(header.parentSession) }),
     ...(header.origin === undefined ? {} : { "dsh.session.origin": header.origin }),
-    ...(header.delegationDepth === undefined ? {} : { "dsh.session.delegation_depth": header.delegationDepth }),
-    ...(header.agentPreset === undefined ? {} : { "dsh.agent.preset": header.agentPreset }),
     // gen_ai.agent.name 从配置 agent_name 读取（为空兜底 deepseek-harness）
     "gen_ai.agent.name": agentName || "deepseek-harness"
   }
@@ -208,7 +204,6 @@ export class DshTraceCoordinator {
     this.logger = logger
   }
   sessions = new Map<string, SessionState>()
-  eventCounter = 0
   // ── 子 agent trace 串联（方案 B：提前创建 root span，无缓冲） ──
   // 活跃 turn 的 root span context 注册表：key = sessionId
   //（startTurn 时写入，closeTurn/disposeSession 时清除；子 turn/start 查父用）
@@ -763,11 +758,9 @@ export class DshTraceCoordinator {
   // private: EventRecord 创建
   // -------------------------------------------------------------------------
   private createBaseEvent(session: DshSession, turn: number, eventName: string): TurnEventRecord {
-    const eventId = `${String(session.id)}:${turn}:${++this.eventCounter}`
     const otel = this.config.otel
     return {
       "time_unix_nano": nowNanos(),
-      "event.id": eventId,
       "trace_id": `${String(session.id)}:${turn}`,
       "gen_ai.session.id": String(session.id),
       "gen_ai.turn.id": `${String(session.id)}:${turn}`,

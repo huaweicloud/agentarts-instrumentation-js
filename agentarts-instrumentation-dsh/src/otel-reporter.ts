@@ -463,7 +463,6 @@ function beginRootSpan(
     const span = tracer.startSpan(spanName, { startTime }, spanCtx)
     span.setAttribute("gen_ai.operation.name", "invoke_agent")
     span.setAttribute("gen_ai.span.kind", "AGENT")
-    span.setAttribute("gen_ai.call.type", "SDK")
     if (parentContext) span.setAttribute("dsh.subagent", true)
     const sc = span.spanContext()
     log("[dsh-metrics] OTel root span begun:", {
@@ -561,7 +560,6 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
       }
       rootSpan.setAttribute("gen_ai.operation.name", "invoke_agent")
       rootSpan.setAttribute("gen_ai.span.kind", "AGENT")
-      rootSpan.setAttribute("gen_ai.call.type", "SDK")
       if (captureContent()) {
         const inputMessages =
           (otherEvent && otherEvent["gen_ai.input.messages"]) ||
@@ -677,7 +675,6 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
       if (stepSpan) {
         stepSpan.setAttribute("gen_ai.span.kind", "STEP")
         stepSpan.setAttribute("gen_ai.operation.name", "react_step")
-        stepSpan.setAttribute("gen_ai.step.id", unit.stepId)
         const lastRespEvent = sortByTime(unit.llmEvents).filter((e) => e["event.name"] === "llm.response").pop()
         const stepFinishReasons = lastRespEvent?.["gen_ai.response.finish_reasons"]
         const stepFinishReason = Array.isArray(stepFinishReasons) ? stepFinishReasons[0] : stepFinishReasons
@@ -881,9 +878,7 @@ function processLlmSpan(events: TurnEventRecord[]) {
       })
       span.setAttribute("gen_ai.operation.name", "chat")
       span.setAttribute("gen_ai.span.kind", "LLM")
-      span.setAttribute("gen_ai.call.type", "SDK")
       if (requestEvent) {
-        setAttr(span, "gen_ai.step.id", requestEvent["gen_ai.step.id"])
         setAttr(span, "gen_ai.provider.name", requestEvent["gen_ai.provider.name"])
         setAttr(span, "gen_ai.request.model", requestEvent["gen_ai.request.model"])
         setAttr(span, "gen_ai.model.id", requestEvent["gen_ai.model.id"])
@@ -899,7 +894,6 @@ function processLlmSpan(events: TurnEventRecord[]) {
         }
       }
       if (responseEvent) {
-        setAttr(span, "gen_ai.step.id", responseEvent["gen_ai.step.id"])
         setAttr(span, "gen_ai.provider.name", responseEvent["gen_ai.provider.name"])
         setAttr(span, "gen_ai.request.model", responseEvent["gen_ai.request.model"])
         setAttr(span, "gen_ai.response.model", responseEvent["gen_ai.response.model"])
@@ -1019,14 +1013,12 @@ function processToolSpan(events: TurnEventRecord[], skipSkillMetrics = false) {
       span.setAttribute("gen_ai.operation.name", "execute_tool")
       span.setAttribute("gen_ai.span.kind", "TOOL")
       span.setAttribute("gen_ai.tool.type", "function")
-      span.setAttribute("gen_ai.call.type", "SDK")
       if (skillName) {
         setAttr(span, "gen_ai.skill.name", skillName)
       }
       if (callEvent) {
         setAttr(span, "gen_ai.tool.name", callEvent["gen_ai.tool.name"])
         setAttr(span, "gen_ai.tool.call.id", callEvent["gen_ai.tool.call.id"])
-        setAttr(span, "gen_ai.step.id", callEvent["gen_ai.step.id"])
         if (captureContent()) {
           setAttr(span, "gen_ai.tool.call.arguments", callEvent["gen_ai.tool.call.arguments"])
         }
@@ -1034,8 +1026,6 @@ function processToolSpan(events: TurnEventRecord[], skipSkillMetrics = false) {
       if (resultEvent) {
         setAttr(span, "gen_ai.tool.name", resultEvent["gen_ai.tool.name"])
         setAttr(span, "gen_ai.tool.call.id", resultEvent["gen_ai.tool.call.id"])
-        setAttr(span, "gen_ai.tool.call.duration", resultEvent["gen_ai.tool.call.duration"])
-        setAttr(span, "gen_ai.step.id", resultEvent["gen_ai.step.id"])
         if (captureContent()) {
           setAttr(span, "gen_ai.tool.call.result", resultEvent["gen_ai.tool.call.result"])
         }
@@ -1044,10 +1034,7 @@ function processToolSpan(events: TurnEventRecord[], skipSkillMetrics = false) {
         ? resultEvent["gen_ai.call.status"] !== false && resultEvent["gen_ai.call.status"] !== "false"
         : true
       setAttr(span, "gen_ai.call.status", toolCallStatus)
-      const turnIdForTool = callEvent?.["gen_ai.turn.id"] || resultEvent?.["gen_ai.turn.id"]
-      if (turnIdForTool) {
-        setAttr(span, "gen_ai.turn.id", turnIdForTool)
-      }
+
       span.end(endTime)
       log("[dsh-metrics] OTel tool span created:", toolName, callId)
     } catch (error) {
@@ -1154,10 +1141,8 @@ function processToolSpan(events: TurnEventRecord[], skipSkillMetrics = false) {
 // 导致在 APM 里只能靠 trace 层级看父子关系，无法按父会话 ID 过滤或聚合。
 export function buildCommonSpanAttrs(event: TurnEventRecord) {
   const attrs: Record<string, any> = {}
-  attrs["gen_ai.call.type"] = "SDK"
   if (event["gen_ai.conversation.id"]) attrs["gen_ai.conversation.id"] = event["gen_ai.conversation.id"]
   else if (event["gen_ai.session.id"]) attrs["gen_ai.conversation.id"] = event["gen_ai.session.id"]
-  if (event["gen_ai.turn.id"]) attrs["gen_ai.turn.id"] = event["gen_ai.turn.id"]
   if (event["user.id"]) attrs["gen_ai.user.id"] = event["user.id"]
   attrs["probe_version"] = PROBE_VERSION
   if (event["domain.id"]) attrs["domain.id"] = event["domain.id"]
@@ -1168,18 +1153,12 @@ export function buildCommonSpanAttrs(event: TurnEventRecord) {
   if (event["gen_ai.agent.type"]) attrs["gen_ai.agent.type"] = event["gen_ai.agent.type"]
   if (event["gen_ai.agent.name"]) attrs["gen_ai.agent.name"] = event["gen_ai.agent.name"]
   if (event["resource_version"]) attrs["resource_version"] = event["resource_version"]
-  if (event["event.id"]) attrs["event.id"] = event["event.id"]
-  if (event["event.name"]) attrs["event.name"] = event["event.name"]
-  if (event["agent.dsh.cwd"]) attrs["agent.dsh.cwd"] = event["agent.dsh.cwd"]
   // ── 子 agent 归属 ──
   // 父会话 ID：即便关闭 trace 串联，也能据此把子 span 归到父会话之下
   if (event["dsh.session.parent_id"]) attrs["dsh.session.parent_id"] = event["dsh.session.parent_id"]
   // 委派深度：0 是有效值，需用 undefined 判断而非真值判断
-  if (event["dsh.session.delegation_depth"] !== undefined && event["dsh.session.delegation_depth"] !== null) {
-    attrs["dsh.session.delegation_depth"] = event["dsh.session.delegation_depth"]
-  }
+
   if (event["dsh.session.origin"]) attrs["dsh.session.origin"] = event["dsh.session.origin"]
-  if (event["dsh.agent.preset"]) attrs["dsh.agent.preset"] = event["dsh.agent.preset"]
   return attrs
 }
 
