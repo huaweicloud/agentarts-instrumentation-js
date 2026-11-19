@@ -2,8 +2,6 @@
 
 DSH（DeepSeek Harness）可观测插件：采集 DSH 运行时的 **trace**（会话/turn/step、LLM 调用、工具调用、子 agent 串联）与 **metric**（token 用量、耗时、TTFT/TBT、工具/技能统计），经 OTLP gRPC 上报华为云 **AgentArts** 平台——trace 到 **APM**，metric 到 **AOM**。
 
-本仓库从 1.0.0 发布产物（`dist/plugin.mjs`，esbuild 单文件 bundle）逆向还原了完整 TypeScript 源码，作为后续优化开发的基础。
-
 ## 仓库结构
 
 ```
@@ -44,7 +42,7 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
                                                └─ execute_tool <tool>
 ```
 
-- **trace 结构**：每个 turn 一个 `invoke_agent` root span，其下按 step 组织 `react step`，包含 `chat <model>`（LLM 调用）与 `execute_tool <tool>`（工具调用）；`features.linkSubagentTrace` 开启时，子 agent 的 root span 以父 trace 为 parent（方案 B：turn 开始即预建 root span）。
+- **trace 结构**：每个 turn 一个 `invoke_agent` root span，其下按 step 组织 `react step`，包含 `chat <model>`（LLM 调用）与 `execute_tool <tool>`（工具调用）；`features.linkSubagentTrace` 开启时，子 agent 的 root span 以父 trace 为 parent。
 - **metric 清单**：token（input/output/cache）、请求数、LLM 耗时、TTFT/TBT、agent 耗时、工具调用数/耗时、技能调用数/耗时/失败数、会话/用量状态 gauge；点号命名指标同时注册下划线别名（对齐 AOM 的 `_seconds` 后缀转换规则）。
 
 ## 运行配置
