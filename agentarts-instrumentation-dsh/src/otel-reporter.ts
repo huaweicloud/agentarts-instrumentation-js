@@ -1132,7 +1132,9 @@ function processToolSpan(events: TurnEventRecord[], skipSkillMetrics = false) {
   }
 }
 
-function buildCommonSpanAttrs(event: TurnEventRecord) {
+// 子 agent 归属信息：这些字段由 coordinator 写在事件上，但此前没有复制到 span，
+// 导致在 APM 里只能靠 trace 层级看父子关系，无法按父会话 ID 过滤或聚合。
+export function buildCommonSpanAttrs(event: TurnEventRecord) {
   const attrs: Record<string, any> = {}
   attrs["gen_ai.call.type"] = "SDK"
   if (event["gen_ai.conversation.id"]) attrs["gen_ai.conversation.id"] = event["gen_ai.conversation.id"]
@@ -1151,6 +1153,15 @@ function buildCommonSpanAttrs(event: TurnEventRecord) {
   if (event["event.id"]) attrs["event.id"] = event["event.id"]
   if (event["event.name"]) attrs["event.name"] = event["event.name"]
   if (event["agent.dsh.cwd"]) attrs["agent.dsh.cwd"] = event["agent.dsh.cwd"]
+  // ── 子 agent 归属 ──
+  // 父会话 ID：即便关闭 trace 串联，也能据此把子 span 归到父会话之下
+  if (event["dsh.session.parent_id"]) attrs["dsh.session.parent_id"] = event["dsh.session.parent_id"]
+  // 委派深度：0 是有效值，需用 undefined 判断而非真值判断
+  if (event["dsh.session.delegation_depth"] !== undefined && event["dsh.session.delegation_depth"] !== null) {
+    attrs["dsh.session.delegation_depth"] = event["dsh.session.delegation_depth"]
+  }
+  if (event["dsh.session.origin"]) attrs["dsh.session.origin"] = event["dsh.session.origin"]
+  if (event["dsh.agent.preset"]) attrs["dsh.agent.preset"] = event["dsh.agent.preset"]
   return attrs
 }
 

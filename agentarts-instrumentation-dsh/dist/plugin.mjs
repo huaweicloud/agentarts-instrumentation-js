@@ -43890,6 +43890,12 @@ function buildCommonSpanAttrs(event) {
   if (event["event.id"]) attrs["event.id"] = event["event.id"];
   if (event["event.name"]) attrs["event.name"] = event["event.name"];
   if (event["agent.dsh.cwd"]) attrs["agent.dsh.cwd"] = event["agent.dsh.cwd"];
+  if (event["dsh.session.parent_id"]) attrs["dsh.session.parent_id"] = event["dsh.session.parent_id"];
+  if (event["dsh.session.delegation_depth"] !== void 0 && event["dsh.session.delegation_depth"] !== null) {
+    attrs["dsh.session.delegation_depth"] = event["dsh.session.delegation_depth"];
+  }
+  if (event["dsh.session.origin"]) attrs["dsh.session.origin"] = event["dsh.session.origin"];
+  if (event["dsh.agent.preset"]) attrs["dsh.agent.preset"] = event["dsh.agent.preset"];
   return attrs;
 }
 function buildUsageStatusAttrs(event) {
