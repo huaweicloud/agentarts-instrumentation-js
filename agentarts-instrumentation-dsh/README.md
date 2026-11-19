@@ -63,6 +63,35 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
 
 配置由安装脚本从命令行参数生成/合并（保留无关字段，写入前备份）；也可手工维护。
 
+## 隐私与数据外发（重要）
+
+本插件会把 DSH 运行时数据发送到远端 AgentArts 平台。**请在启用前确认这些内容可以外发**。
+
+**默认会上报的内容**：
+
+| 类别 | 具体字段 | 说明 |
+|---|---|---|
+| 会话内容 | `gen_ai.input.messages`、`gen_ai.output.messages` | 用户消息与助手回复的文本 |
+| 系统提示词 | `gen_ai.system_instructions` | 会话使用的 system prompt，可能含内部指令 |
+| 工具调用 | `gen_ai.tool.call.arguments`、`gen_ai.tool.call.result` | 工具参数与返回结果原文 |
+| 本地路径 | `agent.dsh.cwd` | 当前工作目录，通常包含用户名 |
+| 设备标识 | `user.id` | 未配置时取主机名 |
+| 会话标识 | `gen_ai.session.id`、`gen_ai.turn.id` | 会话与轮次 ID |
+
+此外还会上报 span 结构、耗时、token 用量、模型名等运行指标——这些不含内容文本。
+
+**如果会话中可能出现敏感信息**（源码、内部文档、临时粘贴的凭据），请在
+`config.json` 中关闭内容采集：
+
+```json
+{ "features": { "captureMessageContent": false } }
+```
+
+关闭后仍上报 trace 结构与性能指标，只是不含上述消息、提示词、工具参数与结果文本。
+该开关支持热重载，改完即生效，无需重启。
+
+建议同时显式设置 `user.id`（避免主机名外发）并避免在会话中粘贴真实凭据。
+
 ## 开发
 
 ```sh

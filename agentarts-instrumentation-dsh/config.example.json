@@ -15,7 +15,13 @@
   "features": {
     // debug 日志开关（默认关闭；开启后写 DEBUG 级明细到 data/logs/plugin-YYYY-MM-DD.log）
     "debug": false,
-    // 采集 trace 的输入/输出消息内容（默认开启；false 时不携带 gen_ai.*.messages 等内容属性）
+    // 采集 trace 的输入/输出消息内容（**默认开启**）。
+    // 开启时会上报到 AgentArts 的内容包括：
+    //   - 用户消息、助手回复（gen_ai.input/output.messages）
+    //   - 系统提示词（gen_ai.system_instructions）
+    //   - 工具调用的参数与返回值（gen_ai.tool.call.arguments/result）
+    // 若会话中会出现敏感信息（代码、内部文档、凭据等），请设为 false：
+    // 关闭后仍上报 span 结构、耗时、token 用量等指标，仅不含上述内容文本。
     "captureMessageContent": true,
     // 串联子 agent trace 到父 trace（默认开启；false 时子 agent trace 独立上报）
     "linkSubagentTrace": true,

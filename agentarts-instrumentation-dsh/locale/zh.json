@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "AgentArts 可观测上报",
-    "description": "采集 DeepSeek Harness 运行时 trace 与 metric，经 OTLP gRPC 上报华为云 AgentArts（trace 到 APM、metric 到 AOM）。端点与鉴权配置在 ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json，可使用仓库 installer/ 目录中的安装脚本从 AgentArts 控制台参数一键生成；可通过 features.captureMessageContent 关闭消息内容采集。关闭本插件即停止上报，不影响 DSH 会话与日志。"
+    "description": "采集 DeepSeek Harness 运行时 trace 与 metric，经 OTLP gRPC 上报华为云 AgentArts（trace 到 APM、metric 到 AOM）。注意：默认会上报会话内容——用户消息、助手回复、系统提示词、工具调用的参数与结果，以及工作目录和主机名；如会话可能包含敏感信息，请在 ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json 中把 features.captureMessageContent 设为 false（热生效，仍保留性能指标）。端点与鉴权配置在同一文件，可使用仓库 installer/ 目录中的脚本生成。关闭本插件即停止上报，不影响 DSH 会话与日志。"
   }
 }
