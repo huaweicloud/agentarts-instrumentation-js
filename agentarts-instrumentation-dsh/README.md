@@ -81,7 +81,7 @@ pnpm typecheck      # 仅类型检查
 pnpm pack:bundle    # npm pack + 重命名 → huaweicloud-agentarts-observation-dsh-plugin-<version>.tgz
 ```
 
-npm 对 scoped 包（`@cloud/*`）默认产出 `cloud-` 前缀文件名，`scripts/pack.mjs` 会重命名为无前缀形态（installer 按该前缀自动探测 tgz）。
+npm 产物名为 `huaweicloud-agentarts-observation-dsh-plugin-<version>.tgz`（`scripts/pack.mjs` 会校验并归一化文件名，installer 按该前缀自动探测 tgz）。
 
 ### 发布流水线
 

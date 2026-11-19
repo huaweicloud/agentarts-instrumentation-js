@@ -4,6 +4,6 @@
 # ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json at runtime.
 - insert:
     - id: huaweicloud-agentarts-observation-dsh
-      name: '@cloud/huaweicloud-agentarts-observation-dsh-plugin'
+      name: 'huaweicloud-agentarts-observation-dsh-plugin'
       config:
         enabled: true

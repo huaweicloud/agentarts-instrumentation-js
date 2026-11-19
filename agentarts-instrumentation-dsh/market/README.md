@@ -11,7 +11,7 @@ DSH 的**插件市场**（Discover 标签）读取一个 JSON 索引来发现可
 {
   "format": 1,
   "plugins": [{
-    "name": "@cloud/huaweicloud-agentarts-observation-dsh-plugin",
+    "name": "huaweicloud-agentarts-observation-dsh-plugin",
     "versions": [{
       "version": "1.0.0",
       "source": { "type": "git", "url": "https://...", "commit": "<40-hex>", "path": "agentarts-instrumentation-dsh" }

@@ -47331,7 +47331,7 @@ function setCaptureContentEnabled(enabled) {
 function captureContent() {
   return captureContentEnabled;
 }
-var SCOPE_NAME = "@cloud/huaweicloud-agentarts-observation-dsh-plugin";
+var SCOPE_NAME = "huaweicloud-agentarts-observation-dsh-plugin";
 var EXPORT_TIMEOUT_MS = 3e4;
 var EXPORT_MAX_ATTEMPTS = 3;
 var EXPORT_RETRY_BACKOFF_MS = [2e3, 8e3];

@@ -47,7 +47,7 @@
 
 set -euo pipefail
 
-PLUGIN_NAME="@cloud/huaweicloud-agentarts-observation-dsh-plugin"
+PLUGIN_NAME="huaweicloud-agentarts-observation-dsh-plugin"
 PLUGIN_ID="huaweicloud-agentarts-observation-dsh"
 # tgz 产物文件名前缀（npm pack 对 scoped 包默认产出 cloud- 前缀，build_dsh.sh 重命名为无前缀形态）
 PLUGIN_TARBALL_PREFIX="huaweicloud-agentarts-observation-dsh-plugin"

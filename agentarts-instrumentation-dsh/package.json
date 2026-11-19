@@ -1,5 +1,5 @@
 {
-  "name": "@cloud/huaweicloud-agentarts-observation-dsh-plugin",
+  "name": "huaweicloud-agentarts-observation-dsh-plugin",
   "version": "1.0.0",
   "description": "DSH AgentArts Observation Plugin - 采集 DeepSeek Harness 指标并上报华为云 AgentArts（APM/AOM）",
   "main": "dist/plugin.mjs",

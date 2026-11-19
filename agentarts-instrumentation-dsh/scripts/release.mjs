@@ -74,7 +74,22 @@ info(`仓库: ${repoUrl}`)
 // ── 2. 构建（含 tsc 类型检查）─────────────────────────────────────────────
 // dry-run 同样执行构建：漂移校验与测试都依赖编译产物，而 dist/ 下除
 // plugin.mjs 外都是 gitignore 的中间产物，不构成仓库改动。
-const beforeHash = fs.existsSync(bundlePath) ? sha256(bundlePath) : null
+const bundleRel = path.relative(repoRoot, bundlePath).split(path.sep).join("/")
+// 与 HEAD 中的版本比较，而不是与"构建前的磁盘文件"比较：
+// 后者在工作区产物已更新但尚未提交时会误判为通过。
+const headHash = (() => {
+  try {
+    // maxBuffer 必须放大：产物约 2MB，默认 1MB 会抛 ENOBUFS，
+    // 被 catch 吞掉后漂移校验会静默失效。
+    const blob = execFileSync("git", ["show", `HEAD:${bundleRel}`], {
+      cwd: PKG_DIR,
+      maxBuffer: 64 * 1024 * 1024
+    })
+    return createHash("sha256").update(blob).digest("hex")
+  } catch {
+    return null // 尚未纳入版本控制
+  }
+})()
 console.log("\n[1/5] 构建")
 // 直接调用 tsc 的 JS 入口与 build.mjs，不经过 npm/.cmd 包装：
 // Windows 下 Node 拒绝 spawn .cmd（EINVAL），而这两个入口都是纯 JS，跨平台一致。
@@ -87,15 +102,15 @@ run(process.execPath, [path.join(PKG_DIR, "build.mjs")])
 console.log("\n[2/5] 产物漂移校验")
 if (!fs.existsSync(bundlePath)) fail(`构建产物不存在: ${pkg.main}`)
 const afterHash = sha256(bundlePath)
-if (beforeHash === null) {
-  warn("仓库中原本没有产物，本次构建生成的版本需一并提交")
-} else if (beforeHash !== afterHash) {
-  warn("产物与源码不一致，已重新生成 dist/plugin.mjs")
+if (headHash === null) {
+  warn("仓库中尚无该产物，本次构建生成的版本需一并提交")
+} else if (headHash !== afterHash) {
+  warn("产物与仓库中已提交的版本不一致，已重新生成 dist/plugin.mjs")
   info("这通常意味着改了 src/ 但忘了重新构建并提交产物。")
   info("请检查 diff 后提交，再重跑本脚本。")
   fail("产物漂移：请先提交重新生成的 dist/plugin.mjs")
 } else {
-  ok("产物与已提交版本一致")
+  ok("产物与仓库中已提交版本一致")
 }
 
 // ── 4. 测试 ───────────────────────────────────────────────────────────────

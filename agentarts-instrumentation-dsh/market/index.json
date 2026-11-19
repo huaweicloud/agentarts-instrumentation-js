@@ -6,7 +6,7 @@
   },
   "plugins": [
     {
-      "name": "@cloud/huaweicloud-agentarts-observation-dsh-plugin",
+      "name": "huaweicloud-agentarts-observation-dsh-plugin",
       "title": {
         "en": "AgentArts observation",
         "zh": "AgentArts 可观测上报"
@@ -24,11 +24,11 @@
       "versions": [
         {
           "version": "1.0.0",
-          "publishTimestamp": 1794995072,
+          "publishTimestamp": 1795052334,
           "source": {
             "type": "git",
             "url": "https://github.com/huaweicloud/agentarts-instrumentation-js",
-            "commit": "89e3444ea6d3b59051b020e90f8b2bf942703e59",
+            "commit": "883014fd17330d2b531c8c300d29d282ad882010",
             "path": "agentarts-instrumentation-dsh"
           },
           "engines": {

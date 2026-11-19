@@ -94,7 +94,7 @@ $ErrorActionPreference = "Stop"
 # (pnpm/dsh write progress/warnings to stderr); harmless no-op on PS 5.1.
 $PSNativeCommandUseErrorActionPreference = $false
 
-$script:PluginName = "@cloud/huaweicloud-agentarts-observation-dsh-plugin"
+$script:PluginName = "huaweicloud-agentarts-observation-dsh-plugin"
 $script:PluginId = "huaweicloud-agentarts-observation-dsh"
 # tgz 产物文件名前缀（npm pack 对 scoped 包默认产出 cloud- 前缀，build_dsh.sh 重命名为无前缀形态）
 $script:PluginTarballPrefix = "huaweicloud-agentarts-observation-dsh-plugin"
