@@ -17,6 +17,7 @@
     "icon.svg",
     "config.example.json",
     "installer",
+    "SECURITY-NOTES.md",
     "README.md"
   ],
   "scripts": {
