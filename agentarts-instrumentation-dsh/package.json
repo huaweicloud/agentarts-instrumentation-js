@@ -37,6 +37,15 @@
   ],
   "author": "huaweicloud",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huaweicloud/agentarts-instrumentation-js.git",
+    "directory": "agentarts-instrumentation-dsh"
+  },
+  "homepage": "https://github.com/huaweicloud/agentarts-instrumentation-js/tree/main/agentarts-instrumentation-dsh",
+  "bugs": {
+    "url": "https://github.com/huaweicloud/agentarts-instrumentation-js/issues"
+  },
   "engines": {
     "node": ">=24.9.0",
     "dsh": "^0.2.1-rc.2"
