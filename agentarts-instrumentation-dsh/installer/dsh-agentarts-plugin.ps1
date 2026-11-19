@@ -31,9 +31,12 @@
 
 .EXAMPLE
   .\dsh-agentarts-plugin.ps1 -AgentId <id> -DomainId <id> -ProjectId <id> `
-    -Endpoint 10.x.x.x:4317 -Token <token> `
-    -AomEndpoint 215.x.x.x:4317 -AomAccessCode <code> -AomPrometheusId <id> `
+    -Endpoint https://apm-access.<region>.myhuaweicloud.com -Token <token> `
+    -AomEndpoint https://aom-access.<region>.myhuaweicloud.com `
+    -AomAccessCode <code> -AomPrometheusId <id> `
     -ResourceType agent
+
+  # In-cluster plaintext gRPC is also supported: -Endpoint http://10.x.x.x:4317
 
 .EXAMPLE
   .\dsh-agentarts-plugin.ps1 install -AgentId <id> ...   # same, explicit subcommand
@@ -297,8 +300,14 @@ function Invoke-Dsh([string[]]$DshArgs) {
 
 function Ensure-EndpointPort([string]$Value) {
     if (-not $Value) { return $Value }
-    if ($Value.Contains(":")) { return $Value }   # 带端口或 https:// 前缀，原样
-    return "${Value}:4317"
+    $v = $Value.Trim()
+    if ($v -match "^https?://") { return $v }        # 已带协议，原样（生产域名走 TLS）
+    if ($v.Contains(":")) { return $v }             # 带端口，原样（内网 IP:4317）
+    if ($v -match "^\d{1,3}(\.\d{1,3}){3}$") { return "${v}:4317" }   # 纯 IPv4，补内网默认端口
+    if ($v -match "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+$") {
+        return "https://$v"                         # 形如域名，补 https（生产默认 443）
+    }
+    return "${v}:4317"
 }
 
 function Split-Profiles([string]$Value) {
@@ -700,8 +709,8 @@ DSH AgentArts Observation Plugin - single entry installer/uninstaller.
 
 Usage:
   .\dsh-agentarts-plugin.ps1 -AgentId <id> -DomainId <id> -ProjectId <id> `
-      -Endpoint <host:port> -Token <token> `
-      -AomEndpoint <host:port> -AomAccessCode <code> -AomPrometheusId <id> [options]
+      -Endpoint https://apm-access.<region>.myhuaweicloud.com -Token <token> `
+      -AomEndpoint https://aom-access.<region>.myhuaweicloud.com -AomAccessCode <code> -AomPrometheusId <id> [options]
       # no subcommand = install
 
   .\dsh-agentarts-plugin.ps1 install   [same parameters]      # explicit
@@ -715,9 +724,12 @@ install - required when ~/.dsh/plugins/<插件包名>/config.json does not exist
   -AgentId <id>                 AgentArts agent resource ID
   -DomainId <id>                AgentArts tenant/domain ID
   -ProjectId <id>               AgentArts project ID
-  -Endpoint <host:port>         APM OTLP gRPC endpoint (e.g. 10.x.x.x:4317)
+  -Endpoint <url>               APM OTLP gRPC endpoint. Production:
+                                https://apm-access.<region>.myhuaweicloud.com
+                                (in-cluster gRPC also accepted: 10.x.x.x:4317)
   -Token <token>                APM authentication token
-  -AomEndpoint <host:port>      AOM OTLP gRPC endpoint
+  -AomEndpoint <url>            AOM OTLP gRPC endpoint, e.g.
+                                https://aom-access.<region>.myhuaweicloud.com
   -AomAccessCode <code>         AOM access code
   -AomPrometheusId <id>         AOM prometheus instance ID
 

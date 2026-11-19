@@ -115,8 +115,8 @@ git push origin HEAD --tags
 ```powershell
 # Windows：安装（缺 config.json 时业务参数必填，详见脚本 help）
 .\dsh-agentarts-plugin.ps1 -AgentId <id> -DomainId <id> -ProjectId <id> `
-  -Endpoint 10.x.x.x:4317 -Token <token> `
-  -AomEndpoint 215.x.x.x:4317 -AomAccessCode <code> -AomPrometheusId <id>
+  -Endpoint https://apm-access.<region>.myhuaweicloud.com -Token <token> `
+  -AomEndpoint https://aom-access.<region>.myhuaweicloud.com -AomAccessCode <code> -AomPrometheusId <id>
 .\dsh-agentarts-plugin.ps1 status      # 查看注册状态
 .\dsh-agentarts-plugin.ps1 uninstall -Yes
 ```
@@ -124,9 +124,15 @@ git push origin HEAD --tags
 ```sh
 # Linux / macOS / WSL
 ./dsh-agentarts-plugin.sh --agent-id <id> --domain-id <id> --project-id <id> \
-  --endpoint 10.x.x.x:4317 --token <token> \
-  --aom-endpoint 215.x.x.x:4317 --aom-access-code <code> --aom-prometheus-id <id>
+  --endpoint https://apm-access.<region>.myhuaweicloud.com --token <token> \
+  --aom-endpoint https://aom-access.<region>.myhuaweicloud.com \
+  --aom-access-code <code> --aom-prometheus-id <id>
 ```
+
+> **上报地址格式**：生产环境使用 **https 域名**（TLS，默认 443），例如
+> `https://apm-access.cn-southwest-2.myhuaweicloud.com`。
+> 内网自建 gRPC 也可用 `http://10.x.x.x:4317` 形式。脚本对不带协议的输入会按规则补全：
+> 纯 IPv4 补 `:4317`（内网明文），形如域名的补 `https://`（生产 TLS）。
 
 脚本完成：安装依赖 → 注册 bundle（`dsh.profile.bundles`，备份/幂等）→ 生成/合并 config.json → `--dump-config` 验证组合。
 

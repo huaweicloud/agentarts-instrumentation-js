@@ -70,6 +70,12 @@ const OTel_BOOLEAN_KEYS = [
   "agentarts_agentops_otel_agent_aom_enable"
 ] as const
 
+// 上报地址字段（APM trace / AOM metric）
+const ENDPOINT_KEYS = [
+  "agentarts_agentops_apm_exporter_endpoint",
+  "agentarts_agentops_aom_exporter_endpoint"
+] as const
+
 const VALID_RESOURCE_TYPES = ["agent", "multiagents", "workflow"]
 
 /** 配置问题（仅告警级；不阻止插件运行） */
@@ -300,6 +306,19 @@ export function validateConfig(config: Record<string, any>): ConfigIssue[] {
     const value = otel[key]
     if (value !== undefined && value !== null && typeof value !== "string") {
       issues.push({ field: `otel.${key}`, message: `expected string, got ${typeof value}` })
+    }
+  }
+
+  // 上报地址建议显式写明协议：生产环境的 AgentArts 地址是 https 域名，
+  // 缺省协议时会按"带端口→内网明文、不带端口→公网 TLS"推断，容易与预期不符。
+  for (const key of ENDPOINT_KEYS) {
+    const value = otel[key]
+    if (typeof value !== "string" || value === "") continue
+    if (!/^https?:\/\//i.test(value.trim())) {
+      issues.push({
+        field: `otel.${key}`,
+        message: "endpoint has no scheme; add https:// (production domain) or http:// (in-cluster gRPC, e.g. 10.x.x.x:4317)"
+      })
     }
   }
 

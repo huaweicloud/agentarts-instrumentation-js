@@ -1258,10 +1258,28 @@ function nanoToMs(nano: string | undefined) {
   return n / 1e6
 }
 
+/**
+ * 归一化上报地址为可用的 gRPC URL。
+ *
+ * 生产环境的 AgentArts 地址是域名形式（https，443）：
+ *   https://apm-access.cn-southwest-2.myhuaweicloud.com
+ *   https://aom-access.cn-southwest-2.myhuaweicloud.com
+ * 内网自建场景仍可能用明文 gRPC（http，4317）：10.x.x.x:4317。
+ *
+ * 因此对缺少协议的输入按"是否带端口"区分，避免把域名误判成明文 80 端口：
+ *   - 已带 http(s)://            → 原样保留
+ *   - 带端口但无协议（10.x.x.x:4317）→ 视为内网明文，补 http://
+ *   - 无端口且形如域名（含点）    → 视为公网 TLS，补 https://（默认 443）
+ *   - 其余（localhost 等）        → 补 http://
+ */
 function toGrpcUrl(endpoint: string | undefined) {
   const ep = String(endpoint || "").trim()
   if (!ep) return ep
   if (/^https?:\/\//i.test(ep)) return ep
+  if (/:\d+$/.test(ep)) return `http://${ep}`
+  if (/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(ep)) {
+    return `https://${ep}`
+  }
   return `http://${ep}`
 }
 
@@ -1312,5 +1330,6 @@ export {
   shutdownOtel,
   setAgentName,
   setCaptureContentEnabled,
-  exportWithRetry
+  exportWithRetry,
+  toGrpcUrl
 }

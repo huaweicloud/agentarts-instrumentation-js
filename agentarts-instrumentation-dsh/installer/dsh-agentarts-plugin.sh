@@ -35,8 +35,9 @@
 #
 # Usage:
 #   ./dsh-agentarts-plugin.sh --agent-id <id> --domain-id <id> \
-#     --project-id <id> --endpoint 10.x.x.x:4317 --token <token> \
-#     --aom-endpoint 215.x.x.x:4317 --aom-access-code <code> \
+#     --project-id <id> --endpoint https://apm-access.<region>.myhuaweicloud.com \
+#     --token <token> --aom-endpoint https://aom-access.<region>.myhuaweicloud.com \
+#     --aom-access-code <code> \
 #     --aom-prometheus-id <id> [--resource-type agent]
 #     # no subcommand = install
 #   ./dsh-agentarts-plugin.sh install   [same options]   # explicit
@@ -114,9 +115,12 @@ install - required when ~/.dsh/plugins/<插件包名>/config.json does not exist
   --agent-id <id>                AgentArts agent resource ID
   --domain-id <id>               AgentArts tenant/domain ID
   --project-id <id>              AgentArts project ID
-  --endpoint <host:port>         APM OTLP gRPC endpoint (e.g. 10.x.x.x:4317)
+  --endpoint <url>               APM OTLP gRPC endpoint. Production:
+                                 https://apm-access.<region>.myhuaweicloud.com
+                                 (in-cluster gRPC also accepted: 10.x.x.x:4317)
   --token <token>                APM authentication token
-  --aom-endpoint <host:port>     AOM OTLP gRPC endpoint
+  --aom-endpoint <url>           AOM OTLP gRPC endpoint, e.g.
+                                 https://aom-access.<region>.myhuaweicloud.com
   --aom-access-code <code>       AOM access code
   --aom-prometheus-id <id>       AOM prometheus instance ID
 
@@ -231,8 +235,22 @@ resolve_package_source() {
     exit 1
 }
 
+# 归一化上报地址：生产用 https 域名（TLS/443），内网用 IP:端口（明文 gRPC）
 ensure_endpoint_port() {
-    case "$1" in *:*) printf '%s' "$1" ;; *) printf '%s:4317' "$1" ;; esac
+    local v
+    v="$(printf '%s' "$1" | tr -d '[:space:]')"
+    case "$v" in
+        http://*|https://*) printf '%s' "$v" ;;            # 已带协议，原样
+        *:*) printf '%s' "$v" ;;                           # 带端口，原样
+        *)
+            if printf '%s' "$v" | grep -Eq '^[0-9]{1,3}(\.[0-9]{1,3}){3}$'; then
+                printf '%s:4317' "$v"                      # 纯 IPv4，补内网默认端口
+            elif printf '%s' "$v" | grep -Eq '^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+$'; then
+                printf 'https://%s' "$v"                   # 形如域名，补 https（生产默认 443）
+            else
+                printf '%s:4317' "$v"
+            fi ;;
+    esac
 }
 
 split_profiles() {

@@ -50,6 +50,20 @@ function validConfig(): Record<string, any> {
   }
 }
 
+test("validateConfig：端点缺少协议时告警", () => {
+  const config = validConfig()
+  config.otel.agentarts_agentops_apm_exporter_endpoint = "apm-access.cn-southwest-2.myhuaweicloud.com"
+  const issues = validateConfig(config)
+  const issue = issues.find((i) => i.field === "otel.agentarts_agentops_apm_exporter_endpoint")
+  assert.ok(issue, "缺少协议的端点应告警")
+  assert.match(issue!.message, /https:\/\//)
+
+  // 显式带协议的地址不应告警
+  config.otel.agentarts_agentops_apm_exporter_endpoint = "https://apm-access.cn-southwest-2.myhuaweicloud.com"
+  const clean = validateConfig(config)
+  assert.equal(clean.some((i) => i.field === "otel.agentarts_agentops_apm_exporter_endpoint"), false)
+})
+
 test("validateConfig：完整有效配置无告警", () => {
   assert.deepEqual(validateConfig(validConfig()), [])
 })

@@ -36,10 +36,15 @@
     "resource_version": "default", // 资源版本；安装脚本会自动写入运行中 DSH 版本
     // ── APM（trace）OTLP gRPC ──
     "agentarts_agentops_apm_token": "", // APM 认证 token（gRPC metadata: authentication）
-    "agentarts_agentops_apm_exporter_endpoint": "", // 例如 10.x.x.x:4317（可省略 :4317）
+    // 生产环境用 https 域名（TLS，默认 443）：
+    //   https://apm-access.<region>.myhuaweicloud.com
+    // 内网自建也可用明文 gRPC：http://10.x.x.x:4317
+    "agentarts_agentops_apm_exporter_endpoint": "",
     // ── AOM（metric）OTLP gRPC ──
     "agentarts_agentops_aom_access_code": "", // AOM 接入码（gRPC metadata: authorization: Bearer）
-    "agentarts_agentops_aom_exporter_endpoint": "", // 例如 215.x.x.x:4317
+    // 生产环境用 https 域名（TLS，默认 443）：
+    //   https://aom-access.<region>.myhuaweicloud.com
+    "agentarts_agentops_aom_exporter_endpoint": "",
     "agentarts_agentops_aom_prometheus_id": "" // AOM Prometheus 实例 ID（gRPC metadata: promid）
   }
 }
