@@ -73,8 +73,8 @@ export default class DshMetricsPlugin {
     }
     const userId = config["user.id"] || os.hostname()
     this.coordinator = new DshTraceCoordinator(config, userId, dsh.logger)
-    this.coordinator.onTurnStart = (startTime, parentContext, subagentName) => {
-      return beginRootSpan(startTime, parentContext, subagentName)
+    this.coordinator.onTurnStart = (startTime, parentContext, subagentName, isSubagent) => {
+      return beginRootSpan(startTime, parentContext, subagentName, isSubagent)
     }
     this.coordinator.onTurnComplete = (events, handle) => {
       if (events.length === 0) return undefined

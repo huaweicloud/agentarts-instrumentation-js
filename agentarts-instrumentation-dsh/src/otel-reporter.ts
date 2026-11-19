@@ -426,7 +426,25 @@ function initOtel(config: AgentArtsOtelConfig) {
   }
 }
 
-function beginRootSpan(startTime: number, parentContext: RootSpanContext | undefined, agentName: string | undefined) {
+/**
+ * 根 span 的命名规则。
+ *
+ * 子 agent 若拿不到自己的名称（未收到 subagent/catalog），不能回退成配置里的
+ * agent 名——那会和父 span 同名，在 APM 列表里无法区分。因此子 agent 统一
+ * 兜底为 `invoke_agent subagent`；顶层会话仍用配置名（缺省 dsh_agent）。
+ */
+export function resolveRootSpanName(explicitAgentName: string | undefined, isSubagent: boolean) {
+  if (explicitAgentName && explicitAgentName.length > 0) return `invoke_agent ${explicitAgentName}`
+  if (isSubagent) return "invoke_agent subagent"
+  return rootSpanName()
+}
+
+function beginRootSpan(
+  startTime: number,
+  parentContext: RootSpanContext | undefined,
+  agentName: string | undefined,
+  isSubagent = false
+) {
   if (!tracer) return undefined
   try {
     let spanCtx = context.active()
@@ -441,7 +459,7 @@ function beginRootSpan(startTime: number, parentContext: RootSpanContext | undef
       //（等价于此前 duck-typed 的 { spanContext: () => parentSpanContext }）
       spanCtx = trace.setSpan(spanCtx, trace.wrapSpanContext(parentSpanContext))
     }
-    const spanName = agentName && agentName.length > 0 ? `invoke_agent ${agentName}` : rootSpanName()
+    const spanName = resolveRootSpanName(agentName, isSubagent || !!parentContext)
     const span = tracer.startSpan(spanName, { startTime }, spanCtx)
     span.setAttribute("gen_ai.operation.name", "invoke_agent")
     span.setAttribute("gen_ai.span.kind", "AGENT")

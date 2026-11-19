@@ -42459,7 +42459,8 @@ var DshTraceCoordinator = class {
     const traceId = `${sessionId}:${turn}:${Date.now()}`;
     const parentCtx = state.parentSessionId && this.config.features.linkSubagentTrace ? this.rootSpanRegistry.get(state.parentSessionId) : void 0;
     const subagentName = this.subagentNames.get(sessionId);
-    const rootSpanHandle = this.onTurnStart?.(startTime, parentCtx, subagentName);
+    const isSubagent = state.parentSessionId !== void 0;
+    const rootSpanHandle = this.onTurnStart?.(startTime, parentCtx, subagentName, isSubagent);
     state.turn = {
       session: state.session,
       turn,
@@ -43206,7 +43207,12 @@ function initOtel(config) {
     }
   }
 }
-function beginRootSpan(startTime, parentContext, agentName2) {
+function resolveRootSpanName(explicitAgentName, isSubagent) {
+  if (explicitAgentName && explicitAgentName.length > 0) return `invoke_agent ${explicitAgentName}`;
+  if (isSubagent) return "invoke_agent subagent";
+  return rootSpanName();
+}
+function beginRootSpan(startTime, parentContext, agentName2, isSubagent = false) {
   if (!tracer) return void 0;
   try {
     let spanCtx = context.active();
@@ -43220,7 +43226,7 @@ function beginRootSpan(startTime, parentContext, agentName2) {
       };
       spanCtx = trace.setSpan(spanCtx, trace.wrapSpanContext(parentSpanContext));
     }
-    const spanName = agentName2 && agentName2.length > 0 ? `invoke_agent ${agentName2}` : rootSpanName();
+    const spanName = resolveRootSpanName(agentName2, isSubagent || !!parentContext);
     const span = tracer.startSpan(spanName, { startTime }, spanCtx);
     span.setAttribute("gen_ai.operation.name", "invoke_agent");
     span.setAttribute("gen_ai.span.kind", "AGENT");
@@ -44148,8 +44154,8 @@ var DshMetricsPlugin = class {
     }
     const userId = config["user.id"] || os2.hostname();
     this.coordinator = new DshTraceCoordinator(config, userId, dsh.logger);
-    this.coordinator.onTurnStart = (startTime, parentContext, subagentName) => {
-      return beginRootSpan(startTime, parentContext, subagentName);
+    this.coordinator.onTurnStart = (startTime, parentContext, subagentName, isSubagent) => {
+      return beginRootSpan(startTime, parentContext, subagentName, isSubagent);
     };
     this.coordinator.onTurnComplete = (events, handle) => {
       if (events.length === 0) return void 0;

@@ -57,6 +57,8 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
 
 无论是否串联，子 agent 的 span 都会带 `dsh.session.parent_id` 与 `dsh.session.delegation_depth` 属性，因此**仍可按父会话 ID 过滤或聚合子 span**——即使它们落在不同 trace 中。
 
+**span 命名**：子 agent 收到 `subagent/catalog` 名称时用该名称（如 `invoke_agent researcher`）；拿不到名称时统一兜底为 `invoke_agent subagent`，不会回退成父 agent 的名字——否则父子 span 同名，在 APM 列表里无法区分。
+
 若场景中存在"父 turn 结束后子 agent 才启动"的异步委派，分析时请以 `dsh.session.parent_id` 为准，而非仅看 trace 层级。
 
 ## 运行配置

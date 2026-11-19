@@ -359,7 +359,9 @@ export class DshTraceCoordinator {
         ? this.rootSpanRegistry.get(state.parentSessionId)
         : undefined
     const subagentName = this.subagentNames.get(sessionId)
-    const rootSpanHandle = this.onTurnStart?.(startTime, parentCtx, subagentName)
+    // 是否子会话：与 trace 串联开关无关，用于子 agent span 的命名兜底
+    const isSubagent = state.parentSessionId !== undefined
+    const rootSpanHandle = this.onTurnStart?.(startTime, parentCtx, subagentName, isSubagent)
     state.turn = {
       session: state.session,
       turn,
@@ -786,7 +788,7 @@ export class DshTraceCoordinator {
   // private: 日志
   // -------------------------------------------------------------------------
   /** turn 开始回调：由 plugin.ts 注入 otel-reporter 的 beginRootSpan（提前创建 root span，返回句柄；subagentName 为子 agent 独立名称） */
-  onTurnStart: ((startTime: number, parentContext: RootSpanContext | undefined, subagentName: string | undefined) => RootSpanHandle | undefined) | null = null
+  onTurnStart: ((startTime: number, parentContext: RootSpanContext | undefined, subagentName: string | undefined, isSubagent: boolean) => RootSpanHandle | undefined) | null = null
   /** turn 完成回调：由 plugin.ts 注入 otel-reporter 的 reportEvents（带提前创建的 handle，返回 root context） */
   onTurnComplete: ((events: TurnEventRecord[], handle: RootSpanHandle | undefined) => any) | null = null
 
