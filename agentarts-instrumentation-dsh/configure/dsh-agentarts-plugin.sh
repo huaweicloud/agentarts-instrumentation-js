@@ -47,8 +47,6 @@ AGENT_ID=""
 AGENT_NAME=""
 DOMAIN_ID=""
 PROJECT_ID=""
-RESOURCE_TYPE="agent"
-RESOURCE_VERSION=""
 USER_ID=""
 ENDPOINT=""
 TOKEN=""
@@ -96,8 +94,7 @@ Optional:
   --aom-access-code <code>   AOM access code (required for AOM)
   --aom-prometheus-id <id>   AOM Prometheus instance ID (required for AOM)
   --agent-name <name>        Agent name (gen_ai.agent.name)
-  --resource-type <type>     agent|multiagents|workflow (default agent)
-  --resource-version <v>, --user-id <id>
+  --user-id <id>
   --link-subagent-trace <true|false>
 
 Credential inputs:
@@ -118,8 +115,7 @@ while [ $# -gt 0 ]; do
         --agent-name)          AGENT_NAME="${2:-}"; shift 2 ;;
         --domain-id)           DOMAIN_ID="${2:-}"; shift 2 ;;
         --project-id)          PROJECT_ID="${2:-}"; shift 2 ;;
-        --resource-type)       RESOURCE_TYPE="${2:-}"; shift 2 ;;
-        --resource-version)    RESOURCE_VERSION="${2:-}"; shift 2 ;;
+
         --user-id)             USER_ID="${2:-}"; shift 2 ;;
         --endpoint)            ENDPOINT="${2:-}"; shift 2 ;;
         --token)               TOKEN="${2:-}"; shift 2 ;;
@@ -161,16 +157,6 @@ cmd_configure() {
         fi
     fi
 
-    # DSH 版本探测（resource_version 自动取运行中 DSH 版本；探测失败兜底 "default"）
-    if [ -z "$RESOURCE_VERSION" ]; then
-        dsh_ver=""
-        if command -v dsh > /dev/null 2>&1; then
-            dsh_ver="$(dsh --version 2>/dev/null | tail -1 | tr -d '[:space:]' || true)"
-        fi
-        [ -n "$dsh_ver" ] || dsh_ver="default"
-        RESOURCE_VERSION="$dsh_ver"
-        info "resource_version (auto-detected DSH version): $RESOURCE_VERSION"
-    fi
 
     # 清理超出保留份数的旧备份（备份同样含明文凭据）
     _old_baks="$(ls -1t "$CONFIG_PATH".bak.* 2>/dev/null | tail -n +$((MAX_CONFIG_BACKUPS + 1)) || true)"
@@ -185,7 +171,6 @@ cmd_configure() {
     # 该临时文件含明文凭据：即使后续失败退出也要删除
     trap 'rm -f "$updates_file"' EXIT
     AGENT_ID="$AGENT_ID" AGENT_NAME="$AGENT_NAME" LINK_SUBAGENT_TRACE="$LINK_SUBAGENT_TRACE" DOMAIN_ID="$DOMAIN_ID" PROJECT_ID="$PROJECT_ID" \
-    RESOURCE_TYPE="$RESOURCE_TYPE" RESOURCE_VERSION="$RESOURCE_VERSION" \
     TOKEN="$TOKEN" ENDPOINT="$ENDPOINT" AOM_ACCESS_CODE="$AOM_ACCESS_CODE" \
     AOM_ENDPOINT="$AOM_ENDPOINT" AOM_PROMETHEUS_ID="$AOM_PROMETHEUS_ID" \
     USER_ID="$USER_ID" node --input-type=commonjs - "$updates_file" <<'EOF'
@@ -194,8 +179,6 @@ const v = {
     agent_resource_id: process.env.AGENT_ID,
     agent_domain_id: process.env.DOMAIN_ID,
     agentarts_project_id: process.env.PROJECT_ID,
-    resource_type: process.env.RESOURCE_TYPE,
-    resource_version: process.env.RESOURCE_VERSION,
     agentarts_agentops_apm_token: process.env.TOKEN,
     agentarts_agentops_apm_exporter_endpoint: process.env.ENDPOINT,
     agentarts_agentops_aom_access_code: process.env.AOM_ACCESS_CODE,
@@ -245,7 +228,7 @@ if (!existed) {
     agent_name: '', 'user.id': '',
     features: { debug: false, captureMessageContent: true, linkSubagentTrace: true, logRetentionDays: 14 },
     otel: { agentarts_agentops_otel_agent_apm_enable: true, agentarts_agentops_otel_agent_aom_enable: true,
-      agent_domain_id: '', agentarts_project_id: '', agent_resource_id: '', resource_type: 'agent', resource_version: 'default',
+      agent_domain_id: '', agentarts_project_id: '', agent_resource_id: '',
       agentarts_agentops_apm_token: '', agentarts_agentops_apm_exporter_endpoint: '',
       agentarts_agentops_aom_access_code: '', agentarts_agentops_aom_exporter_endpoint: '', agentarts_agentops_aom_prometheus_id: '' }
   }

@@ -55,6 +55,8 @@ export const KNOWN_OTEL_KEYS = [
   "agent_domain_id",
   "agentarts_project_id",
   "agent_resource_id",
+  // 已废弃：资源类型固定为 agent、资源版本取运行中的 DSH 版本，
+  // 这两个键仅为兼容旧配置而保留识别（出现时提示可删除）
   "resource_type",
   "resource_version",
   "agentarts_agentops_apm_token",
@@ -64,12 +66,63 @@ export const KNOWN_OTEL_KEYS = [
   "agentarts_agentops_aom_prometheus_id"
 ] as const
 
+/** 已废弃的配置键：识别但忽略，出现时给出可删除的提示 */
+const DEPRECATED_OTEL_KEYS = ["resource_type", "resource_version"] as const
+
 const OTel_BOOLEAN_KEYS = [
   "agentarts_agentops_otel_agent_apm_enable",
   "agentarts_agentops_otel_agent_aom_enable"
 ] as const
 
-const VALID_RESOURCE_TYPES = ["agent", "multiagents", "workflow"]
+// 资源类型固定上报为 agent；资源版本取运行中的 DSH 版本（见 detectDshVersion）
+export const RESOURCE_TYPE = "agent"
+
+/**
+ * 探测运行中的 DSH 版本，用于 resource_version。
+ *
+ * DSH 没有对外暴露版本服务，DSH_INSTALL_DIR 也只注入给 shell 子进程，
+ * 因此按以下顺序尝试，全部失败时回退 "unknown"：
+ *   1. 环境变量 DSH_INSTALL_DIR 指向的包目录（部分启动方式会注入）
+ *   2. CLI 入口 node <dsh>/lib/bin.js
+ *   3. Electron 桌面的 resources 路径（app.asar 或 asar 解包目录）
+ */
+let cachedDshVersion: string | null = null
+
+export function detectDshVersion(): string {
+  if (cachedDshVersion !== null) return cachedDshVersion
+
+  const candidates: string[] = []
+  const installDir = process.env.DSH_INSTALL_DIR
+  if (installDir) candidates.push(path.join(installDir, "package.json"))
+
+  const entry = process.argv[1]
+  if (entry) {
+    candidates.push(path.join(path.dirname(path.dirname(entry)), "package.json"))
+  }
+
+  const resourcesPath = (process as any).resourcesPath
+  if (typeof resourcesPath === "string" && resourcesPath) {
+    for (const appDir of ["app.asar", "app"]) {
+      candidates.push(
+        path.join(resourcesPath, appDir, "dsh", "node_modules", "@deepseek-ai", "dsh", "package.json")
+      )
+    }
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const manifest = JSON.parse(fs.readFileSync(candidate, "utf-8"))
+      if (manifest?.name === "@deepseek-ai/dsh" && typeof manifest.version === "string") {
+        cachedDshVersion = manifest.version
+        return cachedDshVersion
+      }
+    } catch {
+      // 该来源不可用，继续下一个
+    }
+  }
+  cachedDshVersion = "unknown"
+  return cachedDshVersion
+}
 
 /** 配置问题（仅告警级；不阻止插件运行） */
 export interface ConfigIssue {
@@ -337,11 +390,15 @@ export function validateConfig(config: Record<string, any>): ConfigIssue[] {
       })
     }
   }
-  if (typeof otel.resource_type === "string" && otel.resource_type && !VALID_RESOURCE_TYPES.includes(otel.resource_type)) {
-    issues.push({
-      field: "otel.resource_type",
-      message: `expected one of agent|multiagents|workflow, got "${otel.resource_type}"`
-    })
+  // 已废弃的键：资源类型固定为 agent、资源版本取运行中的 DSH 版本，
+  // 配置里写了也不会生效，提示用户删除
+  for (const key of DEPRECATED_OTEL_KEYS) {
+    if (otel[key] !== undefined) {
+      issues.push({
+        field: `otel.${key}`,
+        message: "ignored: resource type is fixed to 'agent' and resource version uses the running DSH version; you can remove this key"
+      })
+    }
   }
   for (const key of ["agent_domain_id", "agentarts_project_id", "agent_resource_id"]) {
     if (otel[key] !== undefined && !otel[key]) {

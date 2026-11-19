@@ -39,8 +39,6 @@ function validConfig(): Record<string, any> {
       agent_domain_id: "d1",
       agentarts_project_id: "p1",
       agent_resource_id: "r1",
-      resource_type: "agent",
-      resource_version: "default",
       agentarts_agentops_apm_token: "t",
       agentarts_agentops_apm_exporter_endpoint: "https://apm-access.cn-southwest-2.myhuaweicloud.com",
       agentarts_agentops_aom_access_code: "c",
@@ -127,16 +125,29 @@ test("validateConfig：features 类型与取值检查", () => {
   assert.equal(issues.some((i) => i.field === "features.logRetentionDayss" && /did you mean "logRetentionDays"/.test(i.message)), true)
 })
 
-test("validateConfig：resource_type 非法取值与空 AgentArts 标识告警", () => {
+test("validateConfig：废弃的 resource_type / resource_version 被忽略并提示", () => {
   const config = validConfig()
-  config.otel.resource_type = "foo"
+  config.otel.resource_type = "workflow"
+  config.otel.resource_version = "9.9.9"
   config.otel.agent_domain_id = ""
   const issues = validateConfig(config)
-  assert.equal(
-    issues.some((i) => i.field === "otel.resource_type" && /agent\|multiagents\|workflow/.test(i.message)),
-    true
-  )
+
+  // 两个键仍被识别（不与未知键混为一谈），但提示已被忽略
+  for (const key of ["resource_type", "resource_version"]) {
+    const issue = issues.find((i) => i.field === `otel.${key}`)
+    assert.ok(issue, `${key} 应给出提示`)
+    assert.match(issue!.message, /ignored/)
+  }
+  // 与其他校验互不影响
   assert.equal(issues.some((i) => i.field === "otel.agent_domain_id" && /blank/.test(i.message)), true)
+})
+
+test("validateConfig：资源类型一定是 agent、资源版本来自 DSH（不再读配置）", () => {
+  const config = validConfig()
+  config.otel.resource_type = "workflow"
+  const issues = validateConfig(config)
+  const unknown = issues.find((i) => /unknown config key/.test(i.message) && i.field.includes("resource_type"))
+  assert.equal(unknown, undefined, "不应被当成未知键")
 })
 
 test("nearestKey：短键距离 1、长键距离 2 内给出建议，否则不给", () => {

@@ -74,7 +74,7 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
 - `features.debug`：开启后写 DEBUG 明细日志。
 - `features.logRetentionDays`：按天保留 `data/logs` 日志，超期自动删除（默认 14，`0` 关闭清理）。
 
-**启动校验**：插件加载时对 config.json 做字段校验，问题以 `[agentarts-dsh] config warning [字段]: ...` 形式输出到 DSH 主日志与文件日志：未知键给出最近键拼写建议（如 `agent_nam` → `agent_name`）、APM/AOM 开启但必填项缺失、`resource_type` 非法取值、`features` 字段类型错误等。均为告警级，不阻止运行。
+**启动校验**：插件加载时对 config.json 做字段校验，问题以 `[agentarts-dsh] config warning [字段]: ...` 形式输出到 DSH 主日志与文件日志：未知键给出最近键拼写建议（如 `agent_nam` → `agent_name`）、APM/AOM 开启但必填项缺失、已废弃的 `resource_type` / `resource_version`（资源类型固定 `agent`、资源版本取 DSH 版本，配置里写了会被忽略）、`features` 字段类型错误等。均为告警级，不阻止运行。
 
 **热重载**：运行期修改 config.json 后（300ms 防抖），`features.*`（debug / captureMessageContent / linkSubagentTrace / logRetentionDays）与 `agent_name` 即时生效，无需重启；`otel`、`enabled`、`outputDir`、`user.id` 的变更只提示「需重启 DSH 生效」（OTel 管线与 userId 在构造期绑定）。解析失败时保持当前配置并告警。
 

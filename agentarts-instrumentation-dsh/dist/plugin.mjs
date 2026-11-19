@@ -41734,6 +41734,8 @@ var KNOWN_OTEL_KEYS = [
   "agent_domain_id",
   "agentarts_project_id",
   "agent_resource_id",
+  // 已废弃：资源类型固定为 agent、资源版本取运行中的 DSH 版本，
+  // 这两个键仅为兼容旧配置而保留识别（出现时提示可删除）
   "resource_type",
   "resource_version",
   "agentarts_agentops_apm_token",
@@ -41742,11 +41744,43 @@ var KNOWN_OTEL_KEYS = [
   "agentarts_agentops_aom_exporter_endpoint",
   "agentarts_agentops_aom_prometheus_id"
 ];
+var DEPRECATED_OTEL_KEYS = ["resource_type", "resource_version"];
 var OTel_BOOLEAN_KEYS = [
   "agentarts_agentops_otel_agent_apm_enable",
   "agentarts_agentops_otel_agent_aom_enable"
 ];
-var VALID_RESOURCE_TYPES = ["agent", "multiagents", "workflow"];
+var RESOURCE_TYPE = "agent";
+var cachedDshVersion = null;
+function detectDshVersion() {
+  if (cachedDshVersion !== null) return cachedDshVersion;
+  const candidates = [];
+  const installDir = process.env.DSH_INSTALL_DIR;
+  if (installDir) candidates.push(path.join(installDir, "package.json"));
+  const entry = process.argv[1];
+  if (entry) {
+    candidates.push(path.join(path.dirname(path.dirname(entry)), "package.json"));
+  }
+  const resourcesPath = process.resourcesPath;
+  if (typeof resourcesPath === "string" && resourcesPath) {
+    for (const appDir of ["app.asar", "app"]) {
+      candidates.push(
+        path.join(resourcesPath, appDir, "dsh", "node_modules", "@deepseek-ai", "dsh", "package.json")
+      );
+    }
+  }
+  for (const candidate of candidates) {
+    try {
+      const manifest = JSON.parse(fs.readFileSync(candidate, "utf-8"));
+      if (manifest?.name === "@deepseek-ai/dsh" && typeof manifest.version === "string") {
+        cachedDshVersion = manifest.version;
+        return cachedDshVersion;
+      }
+    } catch {
+    }
+  }
+  cachedDshVersion = "unknown";
+  return cachedDshVersion;
+}
 function stripJsonComments(json) {
   let result = "";
   let inString = false;
@@ -41968,11 +42002,13 @@ function validateConfig(config) {
       });
     }
   }
-  if (typeof otel.resource_type === "string" && otel.resource_type && !VALID_RESOURCE_TYPES.includes(otel.resource_type)) {
-    issues.push({
-      field: "otel.resource_type",
-      message: `expected one of agent|multiagents|workflow, got "${otel.resource_type}"`
-    });
+  for (const key of DEPRECATED_OTEL_KEYS) {
+    if (otel[key] !== void 0) {
+      issues.push({
+        field: `otel.${key}`,
+        message: "ignored: resource type is fixed to 'agent' and resource version uses the running DSH version; you can remove this key"
+      });
+    }
   }
   for (const key of ["agent_domain_id", "agentarts_project_id", "agent_resource_id"]) {
     if (otel[key] !== void 0 && !otel[key]) {
@@ -42851,9 +42887,10 @@ var DshTraceCoordinator = class {
       "gen_ai.agent.name": this.config.agent_name || "deepseek-harness",
       "domain.id": otel?.agent_domain_id ?? "",
       "gen_ai.resource.id": otel?.agent_resource_id ?? "",
-      "gen_ai.resource.type": otel?.resource_type ?? "",
+      // 资源类型固定为 agent；资源版本取运行中的 DSH 版本（不再从配置读取）
+      "gen_ai.resource.type": RESOURCE_TYPE,
       "gen_ai.project.id": otel?.agentarts_project_id ?? "",
-      "resource_version": otel?.resource_version ?? "default",
+      "resource_version": detectDshVersion(),
       "gen_ai.call.status": true,
       "event.name": eventName
     };
@@ -44116,6 +44153,8 @@ var DshMetricsPlugin = class {
       outputDir,
       debug: config.features.debug,
       captureMessageContent: config.features.captureMessageContent,
+      // 资源版本上报值：自动探测的 DSH 版本
+      resourceVersion: detectDshVersion(),
       apmEnabled: config.otel?.agentarts_agentops_otel_agent_apm_enable ?? false,
       aomEnabled: config.otel?.agentarts_agentops_otel_agent_aom_enable ?? false
     });

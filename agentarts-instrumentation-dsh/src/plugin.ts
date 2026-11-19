@@ -4,7 +4,7 @@
 // 运行参数从 ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json 读取。
 import * as os from "node:os"
 import * as path from "node:path"
-import { CONFIG_PATH, loadConfig, resolveOutputDir, validateConfig, watchConfig } from "./config.js"
+import { CONFIG_PATH, detectDshVersion, loadConfig, resolveOutputDir, validateConfig, watchConfig } from "./config.js"
 import { initLogger, log, logError, setDebugEnabled, setLogRetentionDays } from "./logger.js"
 import { DshTraceCoordinator } from "./coordinator.js"
 import {
@@ -56,6 +56,8 @@ export default class DshMetricsPlugin {
       outputDir,
       debug: config.features.debug,
       captureMessageContent: config.features.captureMessageContent,
+      // 资源版本上报值：自动探测的 DSH 版本
+      resourceVersion: detectDshVersion(),
       apmEnabled: config.otel?.agentarts_agentops_otel_agent_apm_enable ?? false,
       aomEnabled: config.otel?.agentarts_agentops_otel_agent_aom_enable ?? false
     })

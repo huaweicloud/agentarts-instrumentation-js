@@ -40,8 +40,6 @@ param(
     [string]$DomainId,
     [string]$ProjectId,
     [string]$AgentName,
-    [string]$ResourceType = "agent",
-    [string]$ResourceVersion,
     [string]$UserId,
     [string]$Endpoint,
     [string]$Token,
@@ -105,7 +103,7 @@ if (!existed) {
     agent_name: '', 'user.id': '',
     features: { debug: false, captureMessageContent: true, linkSubagentTrace: true, logRetentionDays: 14 },
     otel: { agentarts_agentops_otel_agent_apm_enable: true, agentarts_agentops_otel_agent_aom_enable: true,
-      agent_domain_id: '', agentarts_project_id: '', agent_resource_id: '', resource_type: 'agent', resource_version: 'default',
+      agent_domain_id: '', agentarts_project_id: '', agent_resource_id: '',
       agentarts_agentops_apm_token: '', agentarts_agentops_apm_exporter_endpoint: '',
       agentarts_agentops_aom_access_code: '', agentarts_agentops_aom_exporter_endpoint: '', agentarts_agentops_aom_prometheus_id: '' }
   }
@@ -183,23 +181,11 @@ function Write-PluginConfig {
     $backups = @(Get-ChildItem "$($script:MetricsConfig).bak.*" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
     $configExists = Test-Path $script:MetricsConfig
 
-    # DSH 版本探测（resource_version 自动取运行中 DSH 版本；探测失败兜底 "default"）
-    if (-not $ResourceVersion) {
-        $dshVer = ""
-        if (Get-Command dsh -ErrorAction SilentlyContinue) {
-            $verOut = & dsh --version 2>&1
-            if ($LASTEXITCODE -eq 0) { $dshVer = ($verOut | Select-Object -Last 1 | Out-String).Trim() }
-        }
-        if (-not $dshVer) { $dshVer = "default" }
-        $ResourceVersion = $dshVer
-        Write-Info "resource_version (auto-detected DSH version): $ResourceVersion"
-    }
 
     $otel = [ordered]@{}
     foreach ($pair in @(
         @{ p = "AgentId"; k = "agent_resource_id" }, @{ p = "DomainId"; k = "agent_domain_id" },
-        @{ p = "ProjectId"; k = "agentarts_project_id" }, @{ p = "ResourceType"; k = "resource_type" },
-        @{ p = "ResourceVersion"; k = "resource_version" }, @{ p = "Token"; k = "agentarts_agentops_apm_token" },
+        @{ p = "ProjectId"; k = "agentarts_project_id" }, @{ p = "Token"; k = "agentarts_agentops_apm_token" },
         @{ p = "AomAccessCode"; k = "agentarts_agentops_aom_access_code" },
         @{ p = "AomPrometheusId"; k = "agentarts_agentops_aom_prometheus_id" }
     )) {
@@ -333,8 +319,7 @@ Optional:
   -AomAccessCode <code>  AOM access code (required for AOM)
   -AomPrometheusId <id>  AOM Prometheus instance ID (required for AOM)
   -AgentName <name>      Agent name (gen_ai.agent.name)
-  -ResourceType (agent|multiagents|workflow, default agent)
-  -ResourceVersion, -UserId, -LinkSubagentTrace <bool>
+  -UserId, -LinkSubagentTrace <bool>
 
 Credential inputs:
   Prefer the environment variables DSH_AGENTARTS_APM_TOKEN and
