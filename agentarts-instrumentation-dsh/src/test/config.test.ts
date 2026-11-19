@@ -50,18 +50,20 @@ function validConfig(): Record<string, any> {
   }
 }
 
-test("validateConfig：端点缺少协议时告警", () => {
+test("validateConfig：端点不做格式校验（各种写法都不告警）", () => {
   const config = validConfig()
-  config.otel.agentarts_agentops_apm_exporter_endpoint = "apm-access.cn-southwest-2.myhuaweicloud.com"
-  const issues = validateConfig(config)
-  const issue = issues.find((i) => i.field === "otel.agentarts_agentops_apm_exporter_endpoint")
-  assert.ok(issue, "缺少协议的端点应告警")
-  assert.match(issue!.message, /https:\/\//)
-
-  // 显式带协议的地址不应告警
-  config.otel.agentarts_agentops_apm_exporter_endpoint = "https://apm-access.cn-southwest-2.myhuaweicloud.com"
-  const clean = validateConfig(config)
-  assert.equal(clean.some((i) => i.field === "otel.agentarts_agentops_apm_exporter_endpoint"), false)
+  const variants = [
+    "apm-access.cn-southwest-2.myhuaweicloud.com",
+    "apm-access.cn-southwest-2.myhuaweicloud.com:443",
+    "10.0.0.1:4317",
+    "http://10.0.0.1:4317",
+    "localhost"
+  ]
+  for (const value of variants) {
+    config.otel.agentarts_agentops_apm_exporter_endpoint = value
+    const issues = validateConfig(config).filter((i) => i.field === "otel.agentarts_agentops_apm_exporter_endpoint")
+    assert.deepEqual(issues, [], `不应因格式告警: ${value}`)
+  }
 })
 
 test("validateConfig：完整有效配置无告警", () => {

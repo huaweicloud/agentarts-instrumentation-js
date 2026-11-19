@@ -1261,25 +1261,38 @@ function nanoToMs(nano: string | undefined) {
 /**
  * 归一化上报地址为可用的 gRPC URL。
  *
- * 生产环境的 AgentArts 地址是域名形式（https，443）：
- *   https://apm-access.cn-southwest-2.myhuaweicloud.com
- *   https://aom-access.cn-southwest-2.myhuaweicloud.com
- * 内网自建场景仍可能用明文 gRPC（http，4317）：10.x.x.x:4317。
+ * 上报地址不做强校验：以下形式都合法，按规则统一归一化即可，绝不拒绝输入。
+ *   https://apm-access.cn-southwest-2.myhuaweicloud.com   （生产域名，TLS/443）
+ *   http://10.0.0.1:4317                                 （内网明文 gRPC）
+ *   aom-access.cn-southwest-2.myhuaweicloud.com:443      （域名:端口）
+ *   10.0.0.1:4317                                        （IP:端口）
+ *   10.0.0.1                                             （裸 IP，补内网默认端口）
+ *   localhost                                            （裸主机名）
  *
- * 因此对缺少协议的输入按"是否带端口"区分，避免把域名误判成明文 80 端口：
- *   - 已带 http(s)://            → 原样保留
- *   - 带端口但无协议（10.x.x.x:4317）→ 视为内网明文，补 http://
- *   - 无端口且形如域名（含点）    → 视为公网 TLS，补 https://（默认 443）
- *   - 其余（localhost 等）        → 补 http://
+ * 推断规则（仅补全缺省值，不改变已显式给出的部分）：
+ *   已带 http(s)://            → 原样
+ *   带端口且端口为 443          → 补 https://
+ *   带端口（其他）              → 补 http://
+ *   无端口、形如域名            → 补 https://（默认 443）
+ *   无端口、形如 IPv4           → 补 http:// 与 :4317（内网 gRPC 默认端口）
+ *   其余（localhost 等）        → 补 http://
  */
 function toGrpcUrl(endpoint: string | undefined) {
   const ep = String(endpoint || "").trim()
   if (!ep) return ep
   if (/^https?:\/\//i.test(ep)) return ep
-  if (/:\d+$/.test(ep)) return `http://${ep}`
+  // 域名:端口 / IP:端口
+  const withPort = ep.match(/^([^/]+):(\d+)\/?$/)
+  if (withPort) {
+    const port = Number(withPort[2])
+    return `${port === 443 ? "https" : "http"}://${withPort[1]}:${port}`
+  }
+  // 无端口：域名按生产 TLS 处理
   if (/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(ep)) {
     return `https://${ep}`
   }
+  // 无端口的裸 IPv4：沿用内网 gRPC 默认端口
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ep)) return `http://${ep}:4317`
   return `http://${ep}`
 }
 

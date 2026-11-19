@@ -129,10 +129,14 @@ git push origin HEAD --tags
   --aom-access-code <code> --aom-prometheus-id <id>
 ```
 
-> **上报地址格式**：生产环境使用 **https 域名**（TLS，默认 443），例如
-> `https://apm-access.cn-southwest-2.myhuaweicloud.com`。
-> 内网自建 gRPC 也可用 `http://10.x.x.x:4317` 形式。脚本对不带协议的输入会按规则补全：
-> 纯 IPv4 补 `:4317`（内网明文），形如域名的补 `https://`（生产 TLS）。
+> **上报地址格式**：不做格式校验，以下写法都可以，脚本按原样写入配置：
+>
+> - `https://apm-access.<region>.myhuaweicloud.com`（生产域名，TLS/443）
+> - `apm-access.<region>.myhuaweicloud.com:443`（域名:端口）
+> - `10.x.x.x:4317`（内网明文 gRPC）
+> - `http://10.x.x.x:4317`
+>
+> 缺少协议或端口时由插件的 `toGrpcUrl` 补全：域名补 `https://`、带端口按 443/其他区分 https/http、裸 IPv4 补 `:4317`。
 
 脚本完成：安装依赖 → 注册 bundle（`dsh.profile.bundles`，备份/幂等）→ 生成/合并 config.json → `--dump-config` 验证组合。
 

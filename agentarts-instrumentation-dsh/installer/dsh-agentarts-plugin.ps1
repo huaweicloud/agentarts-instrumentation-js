@@ -298,16 +298,11 @@ function Invoke-Dsh([string[]]$DshArgs) {
     }
 }
 
-function Ensure-EndpointPort([string]$Value) {
+# 上报地址不做校验、不改写：域名 / IP / 端口 / 协议各种写法都原样写入，
+# 由插件的 toGrpcUrl 统一归一化。脚本擅自补端口或协议会改变语义。
+function Normalize-EndpointInput([string]$Value) {
     if (-not $Value) { return $Value }
-    $v = $Value.Trim()
-    if ($v -match "^https?://") { return $v }        # 已带协议，原样（生产域名走 TLS）
-    if ($v.Contains(":")) { return $v }             # 带端口，原样（内网 IP:4317）
-    if ($v -match "^\d{1,3}(\.\d{1,3}){3}$") { return "${v}:4317" }   # 纯 IPv4，补内网默认端口
-    if ($v -match "^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+$") {
-        return "https://$v"                         # 形如域名，补 https（生产默认 443）
-    }
-    return "${v}:4317"
+    return $Value.Trim()
 }
 
 function Split-Profiles([string]$Value) {
@@ -415,8 +410,8 @@ function Write-PluginConfig {
         $value = Get-Variable $pair.p -ValueOnly
         if ($value) { $otel[$pair.k] = $value }
     }
-    if ($Endpoint) { $otel["agentarts_agentops_apm_exporter_endpoint"] = Ensure-EndpointPort $Endpoint }
-    if ($AomEndpoint) { $otel["agentarts_agentops_aom_exporter_endpoint"] = Ensure-EndpointPort $AomEndpoint }
+    if ($Endpoint) { $otel["agentarts_agentops_apm_exporter_endpoint"] = Normalize-EndpointInput $Endpoint }
+    if ($AomEndpoint) { $otel["agentarts_agentops_aom_exporter_endpoint"] = Normalize-EndpointInput $AomEndpoint }
     $updates = [ordered]@{}
     if ($UserId) { $updates["user.id"] = $UserId }
     if ($AgentName) { $updates["agent_name"] = $AgentName }
@@ -724,12 +719,12 @@ install - required when ~/.dsh/plugins/<插件包名>/config.json does not exist
   -AgentId <id>                 AgentArts agent resource ID
   -DomainId <id>                AgentArts tenant/domain ID
   -ProjectId <id>               AgentArts project ID
-  -Endpoint <url>               APM OTLP gRPC endpoint. Production:
+  -Endpoint <addr>              APM OTLP gRPC endpoint. Any form accepted:
                                 https://apm-access.<region>.myhuaweicloud.com
-                                (in-cluster gRPC also accepted: 10.x.x.x:4317)
+                                apm-access.<region>.myhuaweicloud.com:443
+                                10.x.x.x:4317 (in-cluster plaintext gRPC)
   -Token <token>                APM authentication token
-  -AomEndpoint <url>            AOM OTLP gRPC endpoint, e.g.
-                                https://aom-access.<region>.myhuaweicloud.com
+  -AomEndpoint <addr>           AOM OTLP gRPC endpoint; same forms as -Endpoint
   -AomAccessCode <code>         AOM access code
   -AomPrometheusId <id>         AOM prometheus instance ID
 

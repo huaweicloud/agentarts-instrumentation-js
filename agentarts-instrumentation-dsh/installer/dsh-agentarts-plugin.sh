@@ -115,12 +115,12 @@ install - required when ~/.dsh/plugins/<插件包名>/config.json does not exist
   --agent-id <id>                AgentArts agent resource ID
   --domain-id <id>               AgentArts tenant/domain ID
   --project-id <id>              AgentArts project ID
-  --endpoint <url>               APM OTLP gRPC endpoint. Production:
+  --endpoint <addr>              APM OTLP gRPC endpoint. Any form accepted:
                                  https://apm-access.<region>.myhuaweicloud.com
-                                 (in-cluster gRPC also accepted: 10.x.x.x:4317)
+                                 apm-access.<region>.myhuaweicloud.com:443
+                                 10.x.x.x:4317 (in-cluster plaintext gRPC)
   --token <token>                APM authentication token
-  --aom-endpoint <url>           AOM OTLP gRPC endpoint, e.g.
-                                 https://aom-access.<region>.myhuaweicloud.com
+  --aom-endpoint <addr>          AOM OTLP gRPC endpoint; same forms as --endpoint
   --aom-access-code <code>       AOM access code
   --aom-prometheus-id <id>       AOM prometheus instance ID
 
@@ -235,22 +235,10 @@ resolve_package_source() {
     exit 1
 }
 
-# 归一化上报地址：生产用 https 域名（TLS/443），内网用 IP:端口（明文 gRPC）
-ensure_endpoint_port() {
-    local v
-    v="$(printf '%s' "$1" | tr -d '[:space:]')"
-    case "$v" in
-        http://*|https://*) printf '%s' "$v" ;;            # 已带协议，原样
-        *:*) printf '%s' "$v" ;;                           # 带端口，原样
-        *)
-            if printf '%s' "$v" | grep -Eq '^[0-9]{1,3}(\.[0-9]{1,3}){3}$'; then
-                printf '%s:4317' "$v"                      # 纯 IPv4，补内网默认端口
-            elif printf '%s' "$v" | grep -Eq '^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+$'; then
-                printf 'https://%s' "$v"                   # 形如域名，补 https（生产默认 443）
-            else
-                printf '%s:4317' "$v"
-            fi ;;
-    esac
+# 上报地址不做校验、不改写：域名 / IP / 端口 / 协议各种写法都原样写入，
+# 由插件的 toGrpcUrl 统一归一化。脚本擅自补端口或协议会改变语义。
+normalize_endpoint_input() {
+    printf '%s' "$1" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
 }
 
 split_profiles() {
@@ -332,8 +320,8 @@ write_plugin_config() {
         info "config: skipped (--skip-config)"
         SUMMARY+=("config: skipped")
     else
-        ENDPOINT_PORT=""; [ -n "$ENDPOINT" ] && ENDPOINT_PORT="$(ensure_endpoint_port "$ENDPOINT")"
-        AOM_ENDPOINT_PORT=""; [ -n "$AOM_ENDPOINT" ] && AOM_ENDPOINT_PORT="$(ensure_endpoint_port "$AOM_ENDPOINT")"
+        ENDPOINT_PORT=""; [ -n "$ENDPOINT" ] && ENDPOINT_PORT="$(normalize_endpoint_input "$ENDPOINT")"
+        AOM_ENDPOINT_PORT=""; [ -n "$AOM_ENDPOINT" ] && AOM_ENDPOINT_PORT="$(normalize_endpoint_input "$AOM_ENDPOINT")"
         updates_file="$(mktemp)"
         AGENT_ID="$AGENT_ID" AGENT_NAME="$AGENT_NAME" LINK_SUBAGENT_TRACE="$LINK_SUBAGENT_TRACE" DOMAIN_ID="$DOMAIN_ID" PROJECT_ID="$PROJECT_ID" \
         RESOURCE_TYPE="$RESOURCE_TYPE" RESOURCE_VERSION="$RESOURCE_VERSION" \

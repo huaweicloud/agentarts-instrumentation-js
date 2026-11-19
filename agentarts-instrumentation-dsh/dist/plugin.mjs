@@ -46116,10 +46116,6 @@ var OTel_BOOLEAN_KEYS = [
   "agentarts_agentops_otel_agent_apm_enable",
   "agentarts_agentops_otel_agent_aom_enable"
 ];
-var ENDPOINT_KEYS = [
-  "agentarts_agentops_apm_exporter_endpoint",
-  "agentarts_agentops_aom_exporter_endpoint"
-];
 var VALID_RESOURCE_TYPES = ["agent", "multiagents", "workflow"];
 function stripJsonComments(json) {
   let result = "";
@@ -46316,17 +46312,6 @@ function validateConfig(config) {
     const value = otel[key];
     if (value !== void 0 && value !== null && typeof value !== "string") {
       issues.push({ field: `otel.${key}`, message: `expected string, got ${typeof value}` });
-    }
-  }
-  for (const key of ENDPOINT_KEYS) {
-    const value = otel[key];
-    if (typeof value !== "string" || value === "")
-      continue;
-    if (!/^https?:\/\//i.test(value.trim())) {
-      issues.push({
-        field: `otel.${key}`,
-        message: "endpoint has no scheme; add https:// (production domain) or http:// (in-cluster gRPC, e.g. 10.x.x.x:4317)"
-      });
     }
   }
   const apmEnabled = otel.agentarts_agentops_otel_agent_apm_enable === true;
@@ -48524,11 +48509,16 @@ function toGrpcUrl(endpoint) {
     return ep;
   if (/^https?:\/\//i.test(ep))
     return ep;
-  if (/:\d+$/.test(ep))
-    return `http://${ep}`;
+  const withPort = ep.match(/^([^/]+):(\d+)\/?$/);
+  if (withPort) {
+    const port = Number(withPort[2]);
+    return `${port === 443 ? "https" : "http"}://${withPort[1]}:${port}`;
+  }
   if (/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(ep)) {
     return `https://${ep}`;
   }
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ep))
+    return `http://${ep}:4317`;
   return `http://${ep}`;
 }
 async function shutdownOtel() {
