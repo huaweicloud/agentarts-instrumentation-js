@@ -159,24 +159,41 @@ git push origin HEAD --tags
 
 ## 安装 / 卸载
 
-**方式一：安装脚本**（推荐给最终用户，与 tgz 放同一目录）：
+接入分三步：**安装插件 → 配置接入信息 → 重启 DSH**。完整流程（含 desktop 与 web 两种
+形态的差异、参数获取、验证与排障）见 [docs/接入指导.md](docs/接入指导.md)。
+
+> **先确认形态**：桌面客户端启动的是 `desktop` profile（由 Electron 独占管理，
+> `dsh plugin --profile desktop add` 会被拒绝）；`dsh web` 命令启动的是 `web` profile。
+> **安装脚本的 `-Profile` 默认值是 `web`**，desktop 用户必须显式传 `-Profile desktop`。
+
+**方式一：安装脚本**（安装 + 配置一步完成，与 tgz 放同一目录）：
 
 ```powershell
 # Windows：安装（缺 config.json 时业务参数必填，详见脚本 help）
-.\dsh-agentarts-plugin.ps1 -AgentId <id> -DomainId <id> -ProjectId <id> `
+.\dsh-agentarts-plugin.ps1 -Profile desktop -AgentId <id> -DomainId <id> -ProjectId <id> `
   -Endpoint https://apm-access.<region>.myhuaweicloud.com -Token <token> `
   -AomEndpoint https://aom-access.<region>.myhuaweicloud.com -AomAccessCode <code> -AomPrometheusId <id>
-.\dsh-agentarts-plugin.ps1 status      # 查看注册状态
-.\dsh-agentarts-plugin.ps1 uninstall -Yes
+.\dsh-agentarts-plugin.ps1 status -Profile desktop   # 查看注册状态
+.\dsh-agentarts-plugin.ps1 uninstall -Yes -Profile desktop
 ```
 
 ```sh
 # Linux / macOS / WSL
-./dsh-agentarts-plugin.sh --agent-id <id> --domain-id <id> --project-id <id> \
+./dsh-agentarts-plugin.sh --profile web --agent-id <id> --domain-id <id> --project-id <id> \
   --endpoint https://apm-access.<region>.myhuaweicloud.com --token <token> \
   --aom-endpoint https://aom-access.<region>.myhuaweicloud.com \
   --aom-access-code <code> --aom-prometheus-id <id>
 ```
+
+**方式二：只配置**（插件已通过界面或 `dsh plugin add` 装好时）：
+
+```powershell
+.\dsh-agentarts-plugin.ps1 configure -AgentId <id> -DomainId <id> -ProjectId <id> `
+  -Endpoint https://apm-access.<region>.myhuaweicloud.com -Token <token> `
+  -AomEndpoint https://aom-access.<region>.myhuaweicloud.com -AomAccessCode <code> -AomPrometheusId <id>
+```
+
+`configure` 只写 `config.json`，不改动 profile——安装与配置互不影响。
 
 > **上报地址格式**：不做格式校验，以下写法都可以，脚本按原样写入配置：
 >
