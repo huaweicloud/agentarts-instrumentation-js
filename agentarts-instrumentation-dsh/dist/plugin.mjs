@@ -48514,11 +48514,11 @@ function toGrpcUrl(endpoint) {
     const port = Number(withPort[2]);
     return `${port === 443 ? "https" : "http"}://${withPort[1]}:${port}`;
   }
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ep))
+    return `http://${ep}:4317`;
   if (/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(ep)) {
     return `https://${ep}`;
   }
-  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ep))
-    return `http://${ep}:4317`;
   return `http://${ep}`;
 }
 async function shutdownOtel() {
