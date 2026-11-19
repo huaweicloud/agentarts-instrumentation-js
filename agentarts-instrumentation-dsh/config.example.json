@@ -1,5 +1,5 @@
 // AgentArts 观测插件运行配置模板（带注释的 JSONC；运行时读取同目录结构下的 config.json，
-// 会剥离 // 与 /* */ 注释）。安装脚本 installer/dsh-agentarts-plugin.(ps1|sh) 会把
+// 会剥离 // 与 /* */ 注释）。配置脚本 configure/dsh-agentarts-plugin.(ps1|sh) 会把
 // 命令行参数合并写入 ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json。
 {
   "version": "1.0.0",

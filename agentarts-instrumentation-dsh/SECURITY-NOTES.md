@@ -1,7 +1,7 @@
 # 安全审查记录
 
 本文记录本插件的安全审查范围、发现的问题与修复方式，供后续维护者参考。
-审查对象是仓库内的插件源码、构建产物、安装脚本与文档；不涉及 AgentArts 服务端。
+审查对象是仓库内的插件源码、构建产物、配置脚本与文档；不涉及 AgentArts 服务端。
 
 ## 审查方法
 
@@ -11,7 +11,7 @@
 2. 用 `config.json` 中的真实 token、access code、租户 ID 逐文件比对仓库内容
 3. 检索 git 全量历史，确认敏感文件与长密钥串从未被提交
 4. 检查运行日志与构建产物是否包含凭据、构建机绝对路径、主机名或用户名
-5. 检查安装脚本如何处理凭据（命令行、临时文件、落盘权限、备份）
+5. 检查配置脚本如何处理凭据（命令行、临时文件、落盘权限、备份）
 6. 检查插件是否使用了 `eval` / `new Function` / `child_process` 等危险 API
 7. `npm audit` 检查依赖漏洞
 
@@ -43,7 +43,7 @@
 凭据以明文存放在 `~/.dsh/plugins/<包名>/config.json`，此前完全依赖继承的默认
 权限。Linux 下默认 `umask 022` 产生 `644`，多用户主机上任何用户可读。
 
-修复：安装脚本写入后自动收紧。
+修复：配置脚本写入后自动收紧。
 
 - Windows：`icacls /inheritance:r` 后只授予当前用户、`SYSTEM`、`Administrators`
 - Linux/macOS：目录 `700`、文件 `600`
@@ -130,7 +130,7 @@ git log --all --pretty=format: --name-only --diff-filter=A | sort -u | \
 
 - 升级 OTel 依赖时，先核对 `peerDependencies` 再改版本，避免 api/core 主版本冲突
   （见上文「版本约束」）
-- 修改安装脚本时，保持 ps1 与 sh 行为一致；两者均为含中文的 UTF-8 文件
+- 修改配置脚本时，保持 ps1 与 sh 行为一致；两者均为含中文的 UTF-8 文件
   （ps1 带 BOM，PowerShell 5.1 依赖 BOM 正确读取中文），改动请用显式 UTF-8
   读写工具，勿用会按系统 ANSI 转码的方式重写
 - 任何时候不要把真实 `config.json` 放进仓库

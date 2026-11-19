@@ -16,7 +16,7 @@
     "locale/*.json",
     "icon.svg",
     "config.example.json",
-    "installer",
+    "configure",
     "docs",
     "SECURITY-NOTES.md",
     "README.md"

@@ -17,10 +17,10 @@ DSH（DeepSeek Harness）可观测插件：采集 DSH 运行时的 **trace**（�
 │   ├── logger.ts               # 按日切分的文件日志（<outputDir>/logs/plugin-YYYY-MM-DD.log）
 │   ├── probe-version.generated.ts  # 探针版本号（build.mjs 从 package.json 注入，勿手改）
 │   └── test/mapping.test.ts    # 映射层单元测试（node --test）
-├── installer/                  # 单文件安装/卸载脚本（与发布的 tgz 同级放置）
+├── configure/                  # 配置脚本（只写 config.json，不安装插件）
 │   ├── dsh-agentarts-plugin.ps1   # Windows
 │   └── dsh-agentarts-plugin.sh     # Linux / macOS / WSL
-├── scripts/pack.mjs            # npm pack 后重命名 tgz（cloud- 前缀 → 无前缀，对齐 installer 探测规则）
+├── scripts/pack.mjs            # npm pack 后归一化 tgz 文件名
 ├── build.mjs                   # 版本注入 + esbuild 打包
 ├── cordis.patch.yml            # DSH bundle 补丁：插入插件行
 ├── locale/{en,zh}.json         # 插件管理器显示元数据（meta.title / meta.description）
@@ -130,7 +130,7 @@ pnpm typecheck      # 仅类型检查
 pnpm pack:bundle    # npm pack + 重命名 → huaweicloud-agentarts-observation-dsh-plugin-<version>.tgz
 ```
 
-npm 产物名为 `huaweicloud-agentarts-observation-dsh-plugin-<version>.tgz`（`scripts/pack.mjs` 会校验并归一化文件名，installer 按该前缀自动探测 tgz）。
+npm 产物名为 `huaweicloud-agentarts-observation-dsh-plugin-<version>.tgz`（`scripts/pack.mjs` 会校验并归一化文件名）。
 
 ### 发布流水线
 
@@ -157,88 +157,71 @@ git push origin HEAD --tags
 
 插件市场索引说明见 [market/README.md](market/README.md)。
 
-## 安装 / 卸载
+## 安装与配置
 
-接入分三步：**安装插件 → 配置接入信息 → 重启 DSH**。完整流程（含 desktop 与 web 两种
-形态的差异、参数获取、验证与排障）见 [docs/接入指导.md](docs/接入指导.md)。
+接入分三步：**安装插件 → 配置接入信息 → 重启 DSH**。面向最终用户的完整流程
+（参数获取、desktop/web 差异、验证与排障）见 [docs/接入指导.md](docs/接入指导.md)。
 
-> **先确认形态**：桌面客户端启动的是 `desktop` profile（由 Electron 独占管理，
-> `dsh plugin --profile desktop add` 会被拒绝）；`dsh web` 命令启动的是 `web` profile。
-> **安装脚本的 `-Profile` 默认值是 `web`**，desktop 用户必须显式传 `-Profile desktop`。
+### 步骤一：安装插件
 
-**方式一：安装脚本**（安装 + 配置一步完成，与 tgz 放同一目录）：
+插件发布在插件市场与 npm 仓库，包名 `huaweicloud-agentarts-observation-dsh-plugin`。
+
+**desktop 形态**：在 DSH 客户端 **Plugins** → **Discover**（插件市场）安装，或在 **Add plugin** 中按包名安装。
+
+> desktop profile 由桌面客户端独占管理，命令行 `dsh plugin --profile desktop add` 会被拒绝。
+
+**web 形态**：
+
+```sh
+dsh plugin --profile web add huaweicloud-agentarts-observation-dsh-plugin
+```
+
+bundle 行由 [cordis.patch.yml](cordis.patch.yml) 提供；安装后重启 DSH 以加载新模块代。
+
+### 步骤二：配置接入信息
+
+`configure/` 目录下的脚本**只写配置**，不安装插件、不改动 profile：
 
 ```powershell
-# Windows：安装（缺 config.json 时业务参数必填，详见脚本 help）
-.\dsh-agentarts-plugin.ps1 -Profile desktop -AgentId <id> -DomainId <id> -ProjectId <id> `
+# Windows
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass   # 仅当前窗口
+.\configure\dsh-agentarts-plugin.ps1 -AgentId <id> -ProjectId <id> `
   -Endpoint https://apm-access.<region>.myhuaweicloud.com -Token <token> `
-  -AomEndpoint https://aom-access.<region>.myhuaweicloud.com -AomAccessCode <code> -AomPrometheusId <id>
-.\dsh-agentarts-plugin.ps1 status -Profile desktop   # 查看注册状态
-.\dsh-agentarts-plugin.ps1 uninstall -Yes -Profile desktop
+  -AomEndpoint https://aom-access.<region>.myhuaweicloud.com `
+  -AomAccessCode <code> -AomPrometheusId <id> -AgentName <name>
 ```
 
 ```sh
 # Linux / macOS / WSL
-./dsh-agentarts-plugin.sh --profile web --agent-id <id> --domain-id <id> --project-id <id> \
+./configure/dsh-agentarts-plugin.sh --agent-id <id> --project-id <id> \
   --endpoint https://apm-access.<region>.myhuaweicloud.com --token <token> \
   --aom-endpoint https://aom-access.<region>.myhuaweicloud.com \
-  --aom-access-code <code> --aom-prometheus-id <id>
+  --aom-access-code <code> --aom-prometheus-id <id> --agent-name <name>
 ```
 
-**方式二：只配置**（插件已通过界面或 `dsh plugin add` 装好时）：
+也可以直接手工编辑 `~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json`
+（模板见 [config.example.json](config.example.json)）。
+
+查看当前配置摘要（不打印凭据内容）：
 
 ```powershell
-.\dsh-agentarts-plugin.ps1 configure -AgentId <id> -DomainId <id> -ProjectId <id> `
-  -Endpoint https://apm-access.<region>.myhuaweicloud.com -Token <token> `
-  -AomEndpoint https://aom-access.<region>.myhuaweicloud.com -AomAccessCode <code> -AomPrometheusId <id>
+.\configure\dsh-agentarts-plugin.ps1 status
 ```
 
-`configure` 只写 `config.json`，不改动 profile——安装与配置互不影响。
-
-> **上报地址格式**：不做格式校验，以下写法都可以，脚本按原样写入配置：
->
-> - `https://apm-access.<region>.myhuaweicloud.com`（生产域名，TLS/443）
-> - `apm-access.<region>.myhuaweicloud.com:443`（域名:端口）
-> - `10.x.x.x:4317`（内网明文 gRPC）
-> - `http://10.x.x.x:4317`
->
+> **上报地址格式**：不做格式校验，`https://host`、`host:443`、`10.x.x.x:4317` 等写法都可以。
 > 缺少协议或端口时由插件的 `toGrpcUrl` 补全：域名补 `https://`、带端口按 443/其他区分 https/http、裸 IPv4 补 `:4317`。
 
-脚本完成：安装依赖 → 注册 bundle（`dsh.profile.bundles`，备份/幂等）→ 生成/合并 config.json → `--dump-config` 验证组合。
+### 步骤三：重启 DSH
 
-**方式二：DSH 插件管理**：在 **Plugins** > **Add plugin** 安装本地目录（开发态仓库根目录即可），或用 `dsh plugin --profile add <tgz|目录>`；bundle 行由 [cordis.patch.yml](cordis.patch.yml) 提供。
+`otel` 段在插件加载时绑定 OTLP 管线，**不支持热更新**，配置后必须重启（desktop 完全退出客户端，
+web 重启 `dsh web` 进程）。`features.*` 与 `agent_name` 支持热生效。
 
-> 替换已安装的包后需要重启 DSH 才能加载新模块代；新装 bundle 可经 HMR 生效。
+### 卸载
 
-## 安装与配置解耦
-
-插件分发走 Git，安装与配置是两个独立步骤：
-
-**第 1 步：安装**（任选其一）
-
-```powershell
-# DSH 插件界面：Plugins → Add plugin → 选择 Git 仓库地址或本地目录
-# 或 CLI（非 desktop profile）
-dsh plugin --profile <name> add "git+https://<git-host>/<repo>.git#<commit>"
-```
-
-**第 2 步：配置**（只写 config.json，不触碰 profile）
-
-```powershell
-.\dsh-agentarts-plugin.ps1 configure -AgentId <id> -DomainId <id> -ProjectId <id> `
-  -Endpoint <apm-endpoint> -Token <token> `
-  -AomEndpoint <aom-endpoint> -AomAccessCode <code> -AomPrometheusId <id>
-```
-
-```sh
-./dsh-agentarts-plugin.sh configure --agent-id <id> --domain-id <id> --project-id <id> \
-  --endpoint <apm-endpoint> --token <token> \
-  --aom-endpoint <aom-endpoint> --aom-access-code <code> --aom-prometheus-id <id>
-```
-
-`configure` 与 `install` 共用同一份配置写入逻辑（`Write-PluginConfig` / `write_plugin_config`），区别是**不解析包、不碰 profile、不动 `dsh.profile.bundles`**。已存在 config.json 时进入合并模式并保留备份。
-
-> 配置只在插件加载时读取：改完需重启 DSH。
+插件卸载由 DSH 自身完成：desktop 在 **Plugins** 页卸载，web 执行
+`dsh plugin --profile web remove huaweicloud-agentarts-observation-dsh-plugin`。
+配置文件不随卸载删除，如需清理请手动删除
+`~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/`。
 
 ### 为什么 `dist/plugin.mjs` 要入库
 
