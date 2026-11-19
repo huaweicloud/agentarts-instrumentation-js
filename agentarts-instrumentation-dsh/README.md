@@ -61,6 +61,8 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
 
 配置由安装脚本从命令行参数生成/合并（保留无关字段，写入前备份）；也可手工维护。
 
+**凭据处理**：脚本写入 `config.json` 后会自动收紧文件权限（Windows 下移除继承，仅保留当前用户、SYSTEM、Administrators；Linux/macOS 下 `chmod 600`），历史备份同样处理，并只保留最近 5 份备份——备份同样含明文凭据。凭据也可以通过环境变量 `DSH_AGENTARTS_APM_TOKEN` / `DSH_AGENTARTS_AOM_ACCESS_CODE` 提供，避免出现在命令行（会被 shell 历史与进程列表记录）。
+
 ## 隐私与数据外发（重要）
 
 本插件会把 DSH 运行时数据发送到远端 AgentArts 平台。**请在启用前确认这些内容可以外发**。

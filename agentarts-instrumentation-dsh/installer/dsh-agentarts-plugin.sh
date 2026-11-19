@@ -57,6 +57,8 @@ PROFILES_HOME="$HOME/.dsh/profiles"
 # 配置/数据目录：~/.dsh/plugins/<目录名>/（DSH 插件归属区，pnpm 不管理，重装不丢）
 PLUGIN_HOME="$HOME/.dsh/plugins/$PLUGIN_DIR_NAME"
 CONFIG_PATH="$PLUGIN_HOME/config.json"
+# config.json 的历史备份保留份数（备份含明文凭据，无限累积会扩大暴露面）
+MAX_CONFIG_BACKUPS=5
 # 旧版配置目录（一次性迁移源；仅 install 读取复制，运行时不再写入）
 LEGACY_METRICS_CONFIG="$HOME/.dsh-metrics/config.json"
 LEGACY_METRICS_HOME="$HOME/.dsh-metrics"
@@ -413,7 +415,15 @@ NODE_MERGE
         trap - EXIT
         info "config: $out"
         SUMMARY+=("config: $CONFIG_PATH ($([ "$CONFIG_EXISTS" -eq 1 ] && echo merged || echo generated))")
-        # 收紧含明文凭据的文件权限（含历史备份）；Windows/MSYS 下 chmod 可能无效，忽略失败
+        # 备份含明文凭据：先按保留份数清理，再收紧剩余文件权限
+        # （Windows/MSYS 下 chmod 可能无效，忽略失败）
+        _old_baks="$(ls -1t "$CONFIG_PATH".bak.* 2>/dev/null | tail -n +$((MAX_CONFIG_BACKUPS + 1)) || true)"
+        if [ -n "$_old_baks" ]; then
+            printf '%s\n' "$_old_baks" | while IFS= read -r _old; do
+                [ -f "$_old" ] || continue
+                rm -f "$_old" && info "  removed old backup: $(basename "$_old")"
+            done
+        fi
         chmod 700 "$PLUGIN_HOME" 2>/dev/null || true
         chmod 600 "$CONFIG_PATH" 2>/dev/null || true
         for _bak in "$CONFIG_PATH".bak.*; do [ -f "$_bak" ] && chmod 600 "$_bak" 2>/dev/null; done

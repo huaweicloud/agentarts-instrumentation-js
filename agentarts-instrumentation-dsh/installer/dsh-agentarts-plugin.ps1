@@ -104,6 +104,8 @@ $script:ProfilesHome = Join-Path $env:USERPROFILE ".dsh\profiles"
 # 配置/数据目录：~/.dsh/plugins/<目录名>/（DSH 插件归属区，pnpm 不管理，重装不丢）
 $script:PluginHome = Join-Path $env:USERPROFILE ".dsh\plugins\$($script:PluginDirName)"
 $script:MetricsConfig = Join-Path $script:PluginHome "config.json"
+# config.json 的历史备份保留份数（备份含明文凭据，无限累积会扩大暴露面）
+$script:MaxConfigBackups = 5
 # 旧版配置目录（一次性迁移源；仅 install 读取复制，运行时不再写入）
 $script:LegacyMetricsConfig = Join-Path $env:USERPROFILE ".dsh-metrics\config.json"
 $script:LegacyMetricsHome = Join-Path $env:USERPROFILE ".dsh-metrics"
@@ -469,9 +471,17 @@ function Write-PluginConfig {
         Remove-Item $updatesFile -Force -ErrorAction SilentlyContinue
     }
 
-    # 收紧 config.json 与历史备份的权限（备份同样含明文凭据）
+    # 备份含明文凭据：先按保留份数清理，再收紧剩余文件权限
+    $backups = @(Get-ChildItem "$($script:MetricsConfig).bak.*" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
+    if ($backups.Count -gt $script:MaxConfigBackups) {
+        $backups | Select-Object -Skip $script:MaxConfigBackups | ForEach-Object {
+            Remove-Item $_.FullName -Force -ErrorAction SilentlyContinue
+            Write-Info "  removed old backup: $($_.Name)"
+        }
+        $backups = @(Get-ChildItem "$($script:MetricsConfig).bak.*" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
+    }
     Protect-SecretFile $script:MetricsConfig
-    Get-ChildItem "$($script:MetricsConfig).bak.*" -ErrorAction SilentlyContinue | ForEach-Object { Protect-SecretFile $_.FullName }
+    foreach ($bak in $backups) { Protect-SecretFile $bak.FullName }
 }
 
 # ── configure 子命令（只写配置，不安装、不改 profile）──────────────────
