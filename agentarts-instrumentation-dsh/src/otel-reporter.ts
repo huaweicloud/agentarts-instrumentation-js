@@ -1287,12 +1287,13 @@ function toGrpcUrl(endpoint: string | undefined) {
     const port = Number(withPort[2])
     return `${port === 443 ? "https" : "http"}://${withPort[1]}:${port}`
   }
+  // 无端口的裸 IPv4：沿用内网 gRPC 默认端口（必须在域名判断之前：
+  // 数字同样满足域名字符集，先判域名会把 10.0.0.1 误当成公网域名）
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ep)) return `http://${ep}:4317`
   // 无端口：域名按生产 TLS 处理
   if (/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(ep)) {
     return `https://${ep}`
   }
-  // 无端口的裸 IPv4：沿用内网 gRPC 默认端口
-  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ep)) return `http://${ep}:4317`
   return `http://${ep}`
 }
 
