@@ -19,7 +19,7 @@
       "author": "Huawei Cloud",
       "repository": {
         "url": "https://github.com/huaweicloud/agentarts-instrumentation-js",
-        "directory": "dsh"
+        "directory": "agentarts-instrumentation-dsh"
       },
       "versions": [
         {
@@ -28,8 +28,8 @@
           "source": {
             "type": "git",
             "url": "https://github.com/huaweicloud/agentarts-instrumentation-js",
-            "commit": "e9340c36902db3afb36b0bcbb50635c3774e899e",
-            "path": "dsh"
+            "commit": "651b5147059b08ca2b00546996a90727e632754c",
+            "path": "agentarts-instrumentation-dsh"
           },
           "engines": {
             "dsh": "^0.2.1-rc.2"

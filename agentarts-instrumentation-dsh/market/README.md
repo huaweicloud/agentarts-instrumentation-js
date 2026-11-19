@@ -14,19 +14,19 @@ DSH 的**插件市场**（Discover 标签）读取一个 JSON 索引来发现可
     "name": "@cloud/huaweicloud-agentarts-observation-dsh-plugin",
     "versions": [{
       "version": "1.0.0",
-      "source": { "type": "git", "url": "https://...", "commit": "<40-hex>", "path": "dsh" }
+      "source": { "type": "git", "url": "https://...", "commit": "<40-hex>", "path": "agentarts-instrumentation-dsh" }
     }]
   }]
 }
 ```
 
 `source.type` 只支持 `npm` 和 `git` 两种。本项目走 Git：`commit` 是完整 40 位 SHA，
-`path` 是插件包在仓库中的子目录（本仓库为 `dsh`）。
+`path` 是插件包在仓库中的子目录（本仓库为 `agentarts-instrumentation-dsh`）。
 
 ## 发布时如何更新
 
 ```sh
-cd dsh
+cd agentarts-instrumentation-dsh
 npm run release          # 构建 + 校验 + 测试 + 重新生成 index.json
 ```
 
