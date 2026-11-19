@@ -42,9 +42,9 @@ function validConfig(): Record<string, any> {
       resource_type: "agent",
       resource_version: "default",
       agentarts_agentops_apm_token: "t",
-      agentarts_agentops_apm_exporter_endpoint: "10.0.0.1:4317",
+      agentarts_agentops_apm_exporter_endpoint: "https://apm-access.cn-southwest-2.myhuaweicloud.com",
       agentarts_agentops_aom_access_code: "c",
-      agentarts_agentops_aom_exporter_endpoint: "10.0.0.2:4317",
+      agentarts_agentops_aom_exporter_endpoint: "https://aom-access.cn-southwest-2.myhuaweicloud.com",
       agentarts_agentops_aom_prometheus_id: "prom1"
     }
   }
