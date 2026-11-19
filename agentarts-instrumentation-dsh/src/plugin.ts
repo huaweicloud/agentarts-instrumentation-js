@@ -37,12 +37,12 @@ export default class DshMetricsPlugin {
   constructor(ctx: any, cordisConfig: { enabled?: boolean }) {
     const dsh = ctx
     if (cordisConfig.enabled === false) {
-      dsh.logger.info("[dsh-metrics] collection is disabled by cordis config")
+      dsh.logger.info("[agentarts-dsh] collection is disabled by cordis config")
       return
     }
     const config = loadConfig()
     if (!config.enabled) {
-      dsh.logger.info("[dsh-metrics] collection is disabled")
+      dsh.logger.info("[agentarts-dsh] collection is disabled")
       return
     }
     const outputDir = resolveOutputDir(config)
@@ -51,8 +51,8 @@ export default class DshMetricsPlugin {
     setDebugEnabled(config.features.debug)
     setCaptureContentEnabled(config.features.captureMessageContent)
     setAgentName(config.agent_name)
-    log("[dsh-metrics] plugin starting, version:", PROBE_VERSION)
-    log("[dsh-metrics] config loaded:", {
+    log("[agentarts-dsh] plugin starting, version:", PROBE_VERSION)
+    log("[agentarts-dsh] config loaded:", {
       outputDir,
       debug: config.features.debug,
       captureMessageContent: config.features.captureMessageContent,
@@ -61,15 +61,15 @@ export default class DshMetricsPlugin {
     })
     // 启动校验：字段拼写/缺失/类型问题集中告警（仅告警，不阻止运行）
     for (const issue of validateConfig(config)) {
-      const message = `[dsh-metrics] config warning [${issue.field}]: ${issue.message}`
+      const message = `[agentarts-dsh] config warning [${issue.field}]: ${issue.message}`
       dsh.logger.warn(message)
       logError(message)
     }
     if (config.otel) {
       initOtel(config.otel)
-      log("[dsh-metrics] OTel initialized")
+      log("[agentarts-dsh] OTel initialized")
     } else {
-      log("[dsh-metrics] OTel not configured (otel config missing), traces/metrics disabled")
+      log("[agentarts-dsh] OTel not configured (otel config missing), traces/metrics disabled")
     }
     const userId = config["user.id"] || os.hostname()
     this.coordinator = new DshTraceCoordinator(config, userId, dsh.logger)
@@ -78,7 +78,7 @@ export default class DshMetricsPlugin {
     }
     this.coordinator.onTurnComplete = (events, handle) => {
       if (events.length === 0) return undefined
-      log("[dsh-metrics] reporting turn events:", events.length, handle ? "(pre-created root span)" : "")
+      log("[agentarts-dsh] reporting turn events:", events.length, handle ? "(pre-created root span)" : "")
       return reportEvents(events, handle)
     }
     for (const session of dsh.sessions.list()) this.coordinator.adoptSession(session)
@@ -86,7 +86,7 @@ export default class DshMetricsPlugin {
     // 变更只提示重启（OTel 管线与 userId 在构造期绑定，不支持热切换）。
     const reportIssues = (target: Record<string, any>) => {
       for (const issue of validateConfig(target)) {
-        const message = `[dsh-metrics] config warning [${issue.field}]: ${issue.message}`
+        const message = `[agentarts-dsh] config warning [${issue.field}]: ${issue.message}`
         dsh.logger.warn(message)
         logError(message)
       }
@@ -112,16 +112,16 @@ export default class DshMetricsPlugin {
         setAgentName(next.agent_name)
         setLogRetentionDays(next.features.logRetentionDays)
         reportIssues(next)
-        log("[dsh-metrics] config reloaded (hot-applied: features, agent_name)")
-        dsh.logger.info("[dsh-metrics] config reloaded; features and agent_name applied without restart")
+        log("[agentarts-dsh] config reloaded (hot-applied: features, agent_name)")
+        dsh.logger.info("[agentarts-dsh] config reloaded; features and agent_name applied without restart")
         if (restartReasons.length > 0) {
-          const message = `[dsh-metrics] config change requires a DSH restart to take effect: ${restartReasons.join(", ")}`
+          const message = `[agentarts-dsh] config change requires a DSH restart to take effect: ${restartReasons.join(", ")}`
           dsh.logger.warn(message)
           logError(message)
         }
       },
       (error) => {
-        const message = `[dsh-metrics] config.json changed but failed to parse; keeping current config: ${String(error)}`
+        const message = `[agentarts-dsh] config.json changed but failed to parse; keeping current config: ${String(error)}`
         dsh.logger.warn(message)
         logError(message)
       }
@@ -132,7 +132,7 @@ export default class DshMetricsPlugin {
         try {
           this.coordinator!.adoptSession(session)
         } catch (error) {
-          dsh.logger.warn(`[dsh-metrics] failed to adopt session ${String(session.id)}: ${String(error)}`)
+          dsh.logger.warn(`[agentarts-dsh] failed to adopt session ${String(session.id)}: ${String(error)}`)
         }
       }),
       dsh.on("session/event", (session: any, event: any) => this.coordinator!.onSessionEvent(session, event)),
@@ -140,7 +140,7 @@ export default class DshMetricsPlugin {
         try {
           this.coordinator!.disposeSession(session)
         } catch (error) {
-          dsh.logger.warn(`[dsh-metrics] failed to dispose session ${String(session.id)}: ${String(error)}`)
+          dsh.logger.warn(`[agentarts-dsh] failed to dispose session ${String(session.id)}: ${String(error)}`)
         }
       }),
       dsh.on("llm/stream", (options: any, next: () => AsyncIterable<any>) => this.coordinator!.interceptLlm(options, next))
@@ -151,20 +151,20 @@ export default class DshMetricsPlugin {
         try {
           this.coordinator?.closeAll()
         } catch (error) {
-          dsh.logger.warn(`[dsh-metrics] failed to close live spans: ${String(error)}`)
+          dsh.logger.warn(`[agentarts-dsh] failed to close live spans: ${String(error)}`)
         }
         await shutdownOtel()
-        log("[dsh-metrics] plugin unloaded")
+        log("[agentarts-dsh] plugin unloaded")
       },
       "dsh-metrics: detach listeners and shutdown OTLP"
     )
     const traceEndpoint = config.otel?.agentarts_agentops_apm_exporter_endpoint ?? "(not configured)"
     const metricEndpoint = config.otel?.agentarts_agentops_aom_exporter_endpoint ?? "(not configured)"
     dsh.logger.info(
-      `[dsh-metrics] loaded; traces=${traceEndpoint}; metrics=${metricEndpoint}; content=${
+      `[agentarts-dsh] loaded; traces=${traceEndpoint}; metrics=${metricEndpoint}; content=${
         config.features.captureMessageContent ? "enabled" : "disabled"
       }`
     )
-    log("[dsh-metrics] plugin loaded successfully")
+    log("[agentarts-dsh] plugin loaded successfully")
   }
 }

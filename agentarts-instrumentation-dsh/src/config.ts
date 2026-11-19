@@ -159,7 +159,7 @@ export function loadConfig(configPath = CONFIG_PATH) {
       return mergeConfig(userConfig)
     }
   } catch (error) {
-    console.warn("[dsh-metrics] Failed to load config, using defaults:", error)
+    console.warn("[agentarts-dsh] Failed to load config, using defaults:", error)
   }
   return DEFAULT_CONFIG
 }

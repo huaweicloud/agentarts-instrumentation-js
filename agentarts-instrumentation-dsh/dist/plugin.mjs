@@ -41823,7 +41823,7 @@ function loadConfig(configPath = CONFIG_PATH) {
       return mergeConfig(userConfig);
     }
   } catch (error) {
-    console.warn("[dsh-metrics] Failed to load config, using defaults:", error);
+    console.warn("[agentarts-dsh] Failed to load config, using defaults:", error);
   }
   return DEFAULT_CONFIG;
 }
@@ -42564,7 +42564,7 @@ var DshTraceCoordinator = class {
     try {
       return this.onTurnComplete(events, handle);
     } catch (error) {
-      logError("[dsh-metrics] onTurnComplete callback failed:", error);
+      logError("[agentarts-dsh] onTurnComplete callback failed:", error);
       return void 0;
     }
   }
@@ -42871,12 +42871,12 @@ var DshTraceCoordinator = class {
   /** turn 完成回调：由 plugin.ts 注入 otel-reporter 的 reportEvents（带提前创建的 handle，返回 root context） */
   onTurnComplete = null;
   debug(message) {
-    if (this.config.features.debug) this.logger.debug?.(`[dsh-metrics] ${message}`);
-    logDebug("[dsh-metrics]", message);
+    if (this.config.features.debug) this.logger.debug?.(`[agentarts-dsh] ${message}`);
+    logDebug("[agentarts-dsh]", message);
   }
   warn(message) {
-    this.logger.warn(`[dsh-metrics] ${message}`);
-    logError("[dsh-metrics]", message);
+    this.logger.warn(`[agentarts-dsh] ${message}`);
+    logError("[agentarts-dsh]", message);
   }
 };
 
@@ -42914,10 +42914,10 @@ function exportWithRetry(rawExport, payload, callback, label, describe, onSucces
   let attempt = 0;
   const run = () => {
     attempt += 1;
-    if (attempt === 1) log(`[dsh-metrics] ${label} exporting`, describe());
+    if (attempt === 1) log(`[agentarts-dsh] ${label} exporting`, describe());
     rawExport(payload, (result) => {
       if (result.code === import_core5.ExportResultCode.SUCCESS) {
-        log(`[dsh-metrics] ${label} export SUCCESS`, { ...describe(), attempt });
+        log(`[agentarts-dsh] ${label} export SUCCESS`, { ...describe(), attempt });
         onSuccess?.();
         callback(result);
         return;
@@ -42931,11 +42931,11 @@ function exportWithRetry(rawExport, payload, callback, label, describe, onSucces
       };
       if (attempt < EXPORT_MAX_ATTEMPTS) {
         const delay = EXPORT_RETRY_BACKOFF_MS[Math.min(attempt - 1, EXPORT_RETRY_BACKOFF_MS.length - 1)];
-        log(`[dsh-metrics] ${label} export failed, retrying in ${delay}ms`, detail);
+        log(`[agentarts-dsh] ${label} export failed, retrying in ${delay}ms`, detail);
         setTimeout(run, delay);
         return;
       }
-      logError(`[dsh-metrics] ${label} export FAILED`, detail);
+      logError(`[agentarts-dsh] ${label} export FAILED`, detail);
       callback(result);
     });
   };
@@ -42956,26 +42956,26 @@ function initOtel(config) {
     ctxManager.enable();
     context.setGlobalContextManager(ctxManager);
     contextManagerRegistered = true;
-    log("[dsh-metrics] AsyncLocalStorageContextManager registered");
+    log("[agentarts-dsh] AsyncLocalStorageContextManager registered");
   }
   const apmEnabled = config.agentarts_agentops_otel_agent_apm_enable === true;
   const aomEnabled = config.agentarts_agentops_otel_agent_aom_enable === true;
   if (!apmEnabled && !aomEnabled) {
-    log("[dsh-metrics] OTel disabled (both APM and AOM are off)");
+    log("[agentarts-dsh] OTel disabled (both APM and AOM are off)");
     return;
   }
   diag2.setLogger(
     {
-      debug: (msg, ...args) => log("[OTel]", msg, ...args),
-      info: (msg, ...args) => log("[OTel]", msg, ...args),
-      warn: (msg, ...args) => log("[OTel][WARN]", msg, ...args),
-      error: (msg, ...args) => logError("[OTel]", msg, ...args),
+      debug: (msg, ...args) => log("[agentarts-dsh] [OTel]", msg, ...args),
+      info: (msg, ...args) => log("[agentarts-dsh] [OTel]", msg, ...args),
+      warn: (msg, ...args) => log("[agentarts-dsh] [OTel][WARN]", msg, ...args),
+      error: (msg, ...args) => logError("[agentarts-dsh] [OTel]", msg, ...args),
       verbose: () => {
       }
     },
     DiagLogLevel.INFO
   );
-  log("[dsh-metrics] OTel init config:", {
+  log("[agentarts-dsh] OTel init config:", {
     apmEnabled,
     aomEnabled,
     apmEndpoint: config.agentarts_agentops_apm_exporter_endpoint,
@@ -43014,11 +43014,11 @@ function initOtel(config) {
         spanProcessors: [new import_sdk_trace_base.BatchSpanProcessor(traceExporter)]
       });
       tracer = tracerProvider.getTracer(SCOPE_NAME, PROBE_VERSION);
-      log("[dsh-metrics] APM (Traces) initialized", {
+      log("[agentarts-dsh] APM (Traces) initialized", {
         endpoint: config.agentarts_agentops_apm_exporter_endpoint
       });
     } catch (error) {
-      logError("[dsh-metrics] APM init failed:", error);
+      logError("[agentarts-dsh] APM init failed:", error);
     }
   }
   if (aomEnabled) {
@@ -43092,16 +43092,16 @@ function initOtel(config) {
           () => ({ totalDataPoints, endpoint: aomEndpoint, metricNames: metricNames.join(", ") }),
           () => {
             if (tokenCounterDetails.length > 0) {
-              logDebug("[dsh-metrics] AOM Token/Request Counter values:", tokenCounterDetails);
+              logDebug("[agentarts-dsh] AOM Token/Request Counter values:", tokenCounterDetails);
             }
             if (allMetricDetails.length > 0) {
-              logDebug("[dsh-metrics] AOM All Metric Details:", {
+              logDebug("[agentarts-dsh] AOM All Metric Details:", {
                 count: allMetricDetails.length,
                 details: allMetricDetails
               });
             }
             if (skillMetricDetails.length > 0) {
-              logDebug("[dsh-metrics] AOM Skill Metric Details:", {
+              logDebug("[agentarts-dsh] AOM Skill Metric Details:", {
                 count: skillMetricDetails.length,
                 details: skillMetricDetails
               });
@@ -43203,12 +43203,12 @@ function initOtel(config) {
           unit: "1"
         })
       };
-      log("[dsh-metrics] AOM (Metrics) initialized", {
+      log("[agentarts-dsh] AOM (Metrics) initialized", {
         endpoint: aomEndpoint,
         protocol: "gRPC"
       });
     } catch (error) {
-      logError("[dsh-metrics] AOM init failed:", error);
+      logError("[agentarts-dsh] AOM init failed:", error);
     }
   }
 }
@@ -43237,7 +43237,7 @@ function beginRootSpan(startTime, parentContext, agentName2, isSubagent = false)
     span.setAttribute("gen_ai.span.kind", "AGENT");
     if (parentContext) span.setAttribute("dsh.subagent", true);
     const sc = span.spanContext();
-    log("[dsh-metrics] OTel root span begun:", {
+    log("[agentarts-dsh] OTel root span begun:", {
       name: spanName,
       traceId: sc.traceId,
       spanId: sc.spanId,
@@ -43245,7 +43245,7 @@ function beginRootSpan(startTime, parentContext, agentName2, isSubagent = false)
     });
     return { span, context: { traceId: sc.traceId, spanId: sc.spanId } };
   } catch (error) {
-    logError("[dsh-metrics] OTel beginRootSpan failed:", error);
+    logError("[agentarts-dsh] OTel beginRootSpan failed:", error);
     return void 0;
   }
 }
@@ -43258,23 +43258,23 @@ function reportEvents(events, handle) {
       const name = e["event.name"] || "unknown";
       typeCounts[name] = (typeCounts[name] || 0) + 1;
     }
-    log("[dsh-metrics] OTel reportEvents start:", { total: events.length, types: typeCounts });
+    log("[agentarts-dsh] OTel reportEvents start:", { total: events.length, types: typeCounts });
     const turns = /* @__PURE__ */ new Map();
     for (const event of events) {
       const turnId = event["gen_ai.turn.id"] || event.trace_id || "unknown";
       if (!turns.has(turnId)) turns.set(turnId, []);
       turns.get(turnId).push(event);
     }
-    log("[dsh-metrics] OTel processing", turns.size, "turn(s)");
+    log("[agentarts-dsh] OTel processing", turns.size, "turn(s)");
     let rootSpanContext;
     for (const [turnId, turnEvents] of turns) {
       const ctx = processTurn(turnId, turnEvents, handle);
       if (ctx) rootSpanContext = ctx;
     }
-    log("[dsh-metrics] OTel reportEvents done");
+    log("[agentarts-dsh] OTel reportEvents done");
     return rootSpanContext;
   } catch (error) {
-    logError("[dsh-metrics] OTel reportEvents failed:", error);
+    logError("[agentarts-dsh] OTel reportEvents failed:", error);
     return void 0;
   }
 }
@@ -43284,7 +43284,7 @@ function processTurn(turnId, events, handle) {
     const tb = b.time_unix_nano ? Number(b.time_unix_nano) : 0;
     return ta - tb;
   });
-  logDebug("[dsh-metrics] OTel processTurn:", turnId, "events:", events.length);
+  logDebug("[agentarts-dsh] OTel processTurn:", turnId, "events:", events.length);
   const otherEvent = events.find((e) => e["event.name"] === "other");
   const firstRequest = events.find((e) => e["event.name"] === "llm.request" && e["gen_ai.input.messages"]);
   const lastResponse = [...events].reverse().find((e) => e["event.name"] === "llm.response" && e["gen_ai.output.messages"]);
@@ -43306,7 +43306,7 @@ function processTurn(turnId, events, handle) {
       }
     }
   }
-  log("[dsh-metrics] OTel turn", turnId, "- LLM steps:", steps.size, "tool calls:", toolGroups.size);
+  log("[agentarts-dsh] OTel turn", turnId, "- LLM steps:", steps.size, "tool calls:", toolGroups.size);
   let rootSpan = handle?.span ?? null;
   let rootSpanCtx = handle?.context;
   if (tracer && otherEvent) {
@@ -43340,9 +43340,9 @@ function processTurn(turnId, events, handle) {
           setAttr(rootSpan, "gen_ai.output.messages", toJsonAttr(outputMessages));
         }
       }
-      log("[dsh-metrics] OTel root agent span created:", turnId);
+      log("[agentarts-dsh] OTel root agent span created:", turnId);
     } catch (error) {
-      logError("[dsh-metrics] OTel root agent span creation failed:", { turnId, error });
+      logError("[agentarts-dsh] OTel root agent span creation failed:", { turnId, error });
     }
   }
   if (metricInstruments && otherEvent) {
@@ -43351,7 +43351,7 @@ function processTurn(turnId, events, handle) {
       if (userId) {
         const statusAttrs = buildUsageStatusAttrs(otherEvent);
         metricInstruments.usageStatusGauge.record(1, statusAttrs);
-        log("[dsh-metrics] OTel usage status gauge recorded:", { userId, attrs: statusAttrs });
+        log("[agentarts-dsh] OTel usage status gauge recorded:", { userId, attrs: statusAttrs });
       }
       const genAttrs = buildGenerationAttrs(otherEvent);
       metricInstruments.totalAgentRequests.add(1, genAttrs);
@@ -43364,9 +43364,9 @@ function processTurn(turnId, events, handle) {
           metricInstruments.agentDurationSeconds.record(turnDurationS, genAttrs);
         }
       }
-      log("[dsh-metrics] OTel agent metrics recorded:", { turnId, turnDurationS });
+      log("[agentarts-dsh] OTel agent metrics recorded:", { turnId, turnDurationS });
     } catch (error) {
-      logError("[dsh-metrics] OTel agent metric recording failed:", { turnId, error });
+      logError("[agentarts-dsh] OTel agent metric recording failed:", { turnId, error });
     }
   }
   let totalInputTokens = 0;
@@ -43428,7 +43428,7 @@ function processTurn(turnId, events, handle) {
         startTime: stepStartMs,
         attributes: buildCommonSpanAttrs(otherEvent || events[0])
       }) : null;
-      logDebug("[dsh-metrics] OTel react step created:", {
+      logDebug("[agentarts-dsh] OTel react step created:", {
         stepId: unit.stepId,
         llmRequestTimeRaw: llmReqEvent?.time_unix_nano ?? "(missing)",
         startNano: unit.startNano,
@@ -43452,7 +43452,7 @@ function processTurn(turnId, events, handle) {
       }
       const stepCtx = stepSpan ? trace.setSpan(context.active(), stepSpan) : context.active();
       context.with(stepCtx, () => {
-        logDebug("[dsh-metrics] Step event timestamps:", {
+        logDebug("[agentarts-dsh] Step event timestamps:", {
           stepId: unit.stepId,
           llmEvents: unit.llmEvents.map((e) => ({
             name: e["event.name"],
@@ -43490,7 +43490,7 @@ function processTurn(turnId, events, handle) {
       if (stepSpan) {
         try {
           stepSpan.end(nanoToMs(String(lastNano)));
-          log("[dsh-metrics] OTel react step closed:", {
+          log("[agentarts-dsh] OTel react step closed:", {
             stepId: unit.stepId,
             startNano: unit.startNano,
             lastNano,
@@ -43499,7 +43499,7 @@ function processTurn(turnId, events, handle) {
             toolEvents: unit.toolEvents.length
           });
         } catch (error) {
-          logError("[dsh-metrics] OTel react step end failed:", { error });
+          logError("[agentarts-dsh] OTel react step end failed:", { error });
         }
       }
     }
@@ -43521,14 +43521,14 @@ function processTurn(turnId, events, handle) {
       if (metricInstruments.skillDurationSeconds) {
         metricInstruments.skillDurationSeconds.record(turnDurationS, skillAttrs);
       }
-      log("[dsh-metrics] OTel intent skill metrics recorded:", {
+      log("[agentarts-dsh] OTel intent skill metrics recorded:", {
         turnId,
         intentSkillName,
         turnDurationS,
         attrs: skillAttrs
       });
     } catch (error) {
-      logError("[dsh-metrics] OTel intent skill metric recording failed:", { turnId, intentSkillName, error });
+      logError("[agentarts-dsh] OTel intent skill metric recording failed:", { turnId, intentSkillName, error });
     }
   }
   if (rootSpan) {
@@ -43548,12 +43548,12 @@ function processTurn(turnId, events, handle) {
         const errMsg = String(failedResponse["error.message"] || failedResponse["error.type"]).slice(0, 500);
         rootSpan.setAttribute("gen_ai.call.status", false);
         rootSpan.setStatus({ code: SpanStatusCode.ERROR, message: errMsg });
-        log("[dsh-metrics] OTel root agent span marked ERROR:", { turnId, errorMessage: errMsg });
+        log("[agentarts-dsh] OTel root agent span marked ERROR:", { turnId, errorMessage: errMsg });
       }
       rootSpan.end(nanoToMs(events[events.length - 1].time_unix_nano));
       const sc = rootSpan.spanContext();
       rootSpanCtx = { traceId: sc.traceId, spanId: sc.spanId };
-      log("[dsh-metrics] OTel root agent span ended:", turnId, {
+      log("[agentarts-dsh] OTel root agent span ended:", turnId, {
         totalInputTokens,
         totalOutputTokens,
         totalTokens,
@@ -43561,7 +43561,7 @@ function processTurn(turnId, events, handle) {
         totalCacheWriteTokens
       });
     } catch (error) {
-      logError("[dsh-metrics] OTel root agent span end failed:", { turnId, error });
+      logError("[agentarts-dsh] OTel root agent span end failed:", { turnId, error });
     }
   }
   return rootSpanCtx;
@@ -43604,7 +43604,7 @@ function processLlmSpan(events) {
   const stepId = requestEvent?.["gen_ai.step.id"] || responseEvent?.["gen_ai.step.id"];
   const model = responseEvent?.["gen_ai.response.model"] || requestEvent?.["gen_ai.request.model"];
   const provider = requestEvent?.["gen_ai.provider.name"] || responseEvent?.["gen_ai.provider.name"];
-  logDebug("[dsh-metrics] OTel LLM span:", { stepId, model, provider, hasRequest: !!requestEvent, hasResponse: !!responseEvent });
+  logDebug("[agentarts-dsh] OTel LLM span:", { stepId, model, provider, hasRequest: !!requestEvent, hasResponse: !!responseEvent });
   if (tracer) {
     try {
       const llmSpanName = model ? `chat ${model}` : "chat";
@@ -43670,9 +43670,9 @@ function processLlmSpan(events) {
         }
       }
       span.end(spanEndTime);
-      log("[dsh-metrics] OTel LLM span created:", stepId);
+      log("[agentarts-dsh] OTel LLM span created:", stepId);
     } catch (error) {
-      logError("[dsh-metrics] OTel LLM span creation failed:", { stepId, error });
+      logError("[agentarts-dsh] OTel LLM span creation failed:", { stepId, error });
     }
   }
   if (metricInstruments && responseEvent) {
@@ -43705,9 +43705,9 @@ function processLlmSpan(events) {
       if (typeof tbt === "number" && tbt > 0) {
         metricInstruments.tbt.record(tbt, buildTTOMetricAttrs(responseEvent));
       }
-      log("[dsh-metrics] OTel LLM metrics recorded:", { stepId, inputTokens, outputTokens, model, llmDurationS, ttft, tbt });
+      log("[agentarts-dsh] OTel LLM metrics recorded:", { stepId, inputTokens, outputTokens, model, llmDurationS, ttft, tbt });
     } catch (error) {
-      logError("[dsh-metrics] OTel LLM metric recording failed:", { stepId, error });
+      logError("[agentarts-dsh] OTel LLM metric recording failed:", { stepId, error });
     }
   }
   if (metricInstruments && requestEvent) {
@@ -43716,10 +43716,10 @@ function processLlmSpan(events) {
       if (sessionId) {
         const countAttrs = buildSessionCountAttrs(requestEvent);
         metricInstruments.sessionCountGauge.record(1, countAttrs);
-        log("[dsh-metrics] OTel session count gauge recorded:", { sessionId, attrs: countAttrs });
+        log("[agentarts-dsh] OTel session count gauge recorded:", { sessionId, attrs: countAttrs });
       }
     } catch (error) {
-      logError("[dsh-metrics] OTel session count failed:", { stepId, error });
+      logError("[agentarts-dsh] OTel session count failed:", { stepId, error });
     }
   }
   if (responseEvent) {
@@ -43736,7 +43736,7 @@ function processToolSpan(events, skipSkillMetrics = false) {
   const endTime = resultEvent ? nanoToMs(resultEvent.time_unix_nano) : startTime;
   const toolName = callEvent?.["gen_ai.tool.name"] || resultEvent?.["gen_ai.tool.name"];
   const callId = callEvent?.["gen_ai.tool.call.id"] || resultEvent?.["gen_ai.tool.call.id"];
-  logDebug("[dsh-metrics] OTel tool span:", { toolName, callId, hasCall: !!callEvent, hasResult: !!resultEvent });
+  logDebug("[agentarts-dsh] OTel tool span:", { toolName, callId, hasCall: !!callEvent, hasResult: !!resultEvent });
   const skillName = parseSkillNameFromTool(callEvent, resultEvent);
   if (tracer) {
     try {
@@ -43769,9 +43769,9 @@ function processToolSpan(events, skipSkillMetrics = false) {
       const toolCallStatus = resultEvent ? resultEvent["gen_ai.call.status"] !== false && resultEvent["gen_ai.call.status"] !== "false" : true;
       setAttr(span, "gen_ai.call.status", toolCallStatus);
       span.end(endTime);
-      log("[dsh-metrics] OTel tool span created:", toolName, callId);
+      log("[agentarts-dsh] OTel tool span created:", toolName, callId);
     } catch (error) {
-      logError("[dsh-metrics] OTel tool span creation failed:", { toolName, callId, error });
+      logError("[agentarts-dsh] OTel tool span creation failed:", { toolName, callId, error });
     }
   }
   if (metricInstruments && callEvent) {
@@ -43796,14 +43796,14 @@ function processToolSpan(events, skipSkillMetrics = false) {
         const estimatedOutput = Math.ceil(String(resultStr).length / 4);
         metricInstruments.toolCallOutputTokens.add(estimatedOutput, attrs);
       }
-      log("[dsh-metrics] OTel tool metrics recorded:", toolName);
+      log("[agentarts-dsh] OTel tool metrics recorded:", toolName);
       if (skipSkillMetrics) {
-        log("[dsh-metrics] OTel skip tool-level skill metrics (intent already recorded):", toolName);
+        log("[agentarts-dsh] OTel skip tool-level skill metrics (intent already recorded):", toolName);
       } else if (toolName && toolName.toLowerCase() === "skill") {
         const skillName2 = parseSkillNameFromTool(callEvent, resultEvent);
         if (skillName2) {
           const skillAttrs = buildSkillMetricAttrs(metricEvent, skillName2);
-          logDebug("[dsh-metrics] OTel skill metric attributes:", {
+          logDebug("[agentarts-dsh] OTel skill metric attributes:", {
             skillName: skillName2,
             domainId: skillAttrs["domain.id"],
             resourceId: skillAttrs["gen_ai.resource.id"],
@@ -43814,22 +43814,22 @@ function processToolSpan(events, skipSkillMetrics = false) {
           });
           try {
             metricInstruments.skillCallCount.add(1, skillAttrs);
-            log("[dsh-metrics] OTel skillCallCount.add(1) succeeded for:", skillName2);
+            log("[agentarts-dsh] OTel skillCallCount.add(1) succeeded for:", skillName2);
           } catch (error) {
-            logError("[dsh-metrics] OTel skillCallCount.add(1) failed:", { skillName: skillName2, error });
+            logError("[agentarts-dsh] OTel skillCallCount.add(1) failed:", { skillName: skillName2, error });
           }
           try {
             metricInstruments.skillCallCountTotal.add(1, skillAttrs);
-            log("[dsh-metrics] OTel skillCallCountTotal.add(1) succeeded for:", skillName2);
+            log("[agentarts-dsh] OTel skillCallCountTotal.add(1) succeeded for:", skillName2);
           } catch (error) {
-            logError("[dsh-metrics] OTel skillCallCountTotal.add(1) failed:", { skillName: skillName2, error });
+            logError("[agentarts-dsh] OTel skillCallCountTotal.add(1) failed:", { skillName: skillName2, error });
           }
           if (skillAttrs["gen_ai.call.status"] === false) {
             try {
               metricInstruments.skillErrorCount.add(1, skillAttrs);
-              log("[dsh-metrics] OTel skillErrorCount.add(1) succeeded for failed skill:", skillName2);
+              log("[agentarts-dsh] OTel skillErrorCount.add(1) succeeded for failed skill:", skillName2);
             } catch (error) {
-              logError("[dsh-metrics] OTel skillErrorCount.add(1) failed:", { skillName: skillName2, error });
+              logError("[agentarts-dsh] OTel skillErrorCount.add(1) failed:", { skillName: skillName2, error });
             }
           }
           if (typeof durationMs === "number" && durationMs > 0) {
@@ -43839,13 +43839,13 @@ function processToolSpan(events, skipSkillMetrics = false) {
               if (metricInstruments.skillDurationSeconds) {
                 metricInstruments.skillDurationSeconds.record(durationSeconds, skillAttrs);
               }
-              log("[dsh-metrics] OTel skillDuration.record() succeeded:", {
+              log("[agentarts-dsh] OTel skillDuration.record() succeeded:", {
                 skillName: skillName2,
                 durationMs,
                 durationSeconds
               });
             } catch (error) {
-              logError("[dsh-metrics] OTel skillDuration.record() failed:", {
+              logError("[agentarts-dsh] OTel skillDuration.record() failed:", {
                 skillName: skillName2,
                 durationMs,
                 durationSeconds,
@@ -43853,19 +43853,19 @@ function processToolSpan(events, skipSkillMetrics = false) {
               });
             }
           } else {
-            log("[dsh-metrics] OTel skill duration not recorded:", {
+            log("[agentarts-dsh] OTel skill duration not recorded:", {
               skillName: skillName2,
               durationMs,
               type: typeof durationMs
             });
           }
-          log("[dsh-metrics] OTel skill metrics recording completed:", skillName2);
+          log("[agentarts-dsh] OTel skill metrics recording completed:", skillName2);
         } else {
-          log("[dsh-metrics] OTel skill detected but no skill name parsed from args:", argsStr);
+          log("[agentarts-dsh] OTel skill detected but no skill name parsed from args:", argsStr);
         }
       }
     } catch (error) {
-      logError("[dsh-metrics] OTel tool metric recording failed:", { toolName, callId, error });
+      logError("[agentarts-dsh] OTel tool metric recording failed:", { toolName, callId, error });
     }
   }
 }
@@ -44053,35 +44053,35 @@ function toGrpcUrl(endpoint) {
 async function shutdownOtel() {
   const promises2 = [];
   if (tracerProvider) {
-    log("[dsh-metrics] OTel shutting down APM (Traces)...");
+    log("[agentarts-dsh] OTel shutting down APM (Traces)...");
     promises2.push(
       tracerProvider.shutdown().then(() => {
         tracerProvider = null;
         tracer = null;
-        log("[dsh-metrics] OTel APM shutdown complete");
+        log("[agentarts-dsh] OTel APM shutdown complete");
       }).catch((error) => {
-        logError("[dsh-metrics] OTel APM shutdown failed:", error);
+        logError("[agentarts-dsh] OTel APM shutdown failed:", error);
         tracerProvider = null;
         tracer = null;
       })
     );
   }
   if (meterProvider) {
-    log("[dsh-metrics] OTel shutting down AOM (Metrics)...");
+    log("[agentarts-dsh] OTel shutting down AOM (Metrics)...");
     promises2.push(
       meterProvider.shutdown().then(() => {
         meterProvider = null;
         metricInstruments = null;
-        log("[dsh-metrics] OTel AOM shutdown complete");
+        log("[agentarts-dsh] OTel AOM shutdown complete");
       }).catch((error) => {
-        logError("[dsh-metrics] OTel AOM shutdown failed:", error);
+        logError("[agentarts-dsh] OTel AOM shutdown failed:", error);
         meterProvider = null;
         metricInstruments = null;
       })
     );
   }
   await Promise.allSettled(promises2);
-  log("[dsh-metrics] OTel shutdown complete");
+  log("[agentarts-dsh] OTel shutdown complete");
 }
 
 // src/plugin.ts
@@ -44102,12 +44102,12 @@ var DshMetricsPlugin = class {
   constructor(ctx, cordisConfig) {
     const dsh = ctx;
     if (cordisConfig.enabled === false) {
-      dsh.logger.info("[dsh-metrics] collection is disabled by cordis config");
+      dsh.logger.info("[agentarts-dsh] collection is disabled by cordis config");
       return;
     }
     const config = loadConfig();
     if (!config.enabled) {
-      dsh.logger.info("[dsh-metrics] collection is disabled");
+      dsh.logger.info("[agentarts-dsh] collection is disabled");
       return;
     }
     const outputDir = resolveOutputDir(config);
@@ -44116,8 +44116,8 @@ var DshMetricsPlugin = class {
     setDebugEnabled(config.features.debug);
     setCaptureContentEnabled(config.features.captureMessageContent);
     setAgentName(config.agent_name);
-    log("[dsh-metrics] plugin starting, version:", PROBE_VERSION);
-    log("[dsh-metrics] config loaded:", {
+    log("[agentarts-dsh] plugin starting, version:", PROBE_VERSION);
+    log("[agentarts-dsh] config loaded:", {
       outputDir,
       debug: config.features.debug,
       captureMessageContent: config.features.captureMessageContent,
@@ -44125,15 +44125,15 @@ var DshMetricsPlugin = class {
       aomEnabled: config.otel?.agentarts_agentops_otel_agent_aom_enable ?? false
     });
     for (const issue of validateConfig(config)) {
-      const message = `[dsh-metrics] config warning [${issue.field}]: ${issue.message}`;
+      const message = `[agentarts-dsh] config warning [${issue.field}]: ${issue.message}`;
       dsh.logger.warn(message);
       logError(message);
     }
     if (config.otel) {
       initOtel(config.otel);
-      log("[dsh-metrics] OTel initialized");
+      log("[agentarts-dsh] OTel initialized");
     } else {
-      log("[dsh-metrics] OTel not configured (otel config missing), traces/metrics disabled");
+      log("[agentarts-dsh] OTel not configured (otel config missing), traces/metrics disabled");
     }
     const userId = config["user.id"] || os2.hostname();
     this.coordinator = new DshTraceCoordinator(config, userId, dsh.logger);
@@ -44142,13 +44142,13 @@ var DshMetricsPlugin = class {
     };
     this.coordinator.onTurnComplete = (events, handle) => {
       if (events.length === 0) return void 0;
-      log("[dsh-metrics] reporting turn events:", events.length, handle ? "(pre-created root span)" : "");
+      log("[agentarts-dsh] reporting turn events:", events.length, handle ? "(pre-created root span)" : "");
       return reportEvents(events, handle);
     };
     for (const session of dsh.sessions.list()) this.coordinator.adoptSession(session);
     const reportIssues = (target) => {
       for (const issue of validateConfig(target)) {
-        const message = `[dsh-metrics] config warning [${issue.field}]: ${issue.message}`;
+        const message = `[agentarts-dsh] config warning [${issue.field}]: ${issue.message}`;
         dsh.logger.warn(message);
         logError(message);
       }
@@ -44173,16 +44173,16 @@ var DshMetricsPlugin = class {
         setAgentName(next.agent_name);
         setLogRetentionDays(next.features.logRetentionDays);
         reportIssues(next);
-        log("[dsh-metrics] config reloaded (hot-applied: features, agent_name)");
-        dsh.logger.info("[dsh-metrics] config reloaded; features and agent_name applied without restart");
+        log("[agentarts-dsh] config reloaded (hot-applied: features, agent_name)");
+        dsh.logger.info("[agentarts-dsh] config reloaded; features and agent_name applied without restart");
         if (restartReasons.length > 0) {
-          const message = `[dsh-metrics] config change requires a DSH restart to take effect: ${restartReasons.join(", ")}`;
+          const message = `[agentarts-dsh] config change requires a DSH restart to take effect: ${restartReasons.join(", ")}`;
           dsh.logger.warn(message);
           logError(message);
         }
       },
       (error) => {
-        const message = `[dsh-metrics] config.json changed but failed to parse; keeping current config: ${String(error)}`;
+        const message = `[agentarts-dsh] config.json changed but failed to parse; keeping current config: ${String(error)}`;
         dsh.logger.warn(message);
         logError(message);
       }
@@ -44193,7 +44193,7 @@ var DshMetricsPlugin = class {
         try {
           this.coordinator.adoptSession(session);
         } catch (error) {
-          dsh.logger.warn(`[dsh-metrics] failed to adopt session ${String(session.id)}: ${String(error)}`);
+          dsh.logger.warn(`[agentarts-dsh] failed to adopt session ${String(session.id)}: ${String(error)}`);
         }
       }),
       dsh.on("session/event", (session, event) => this.coordinator.onSessionEvent(session, event)),
@@ -44201,7 +44201,7 @@ var DshMetricsPlugin = class {
         try {
           this.coordinator.disposeSession(session);
         } catch (error) {
-          dsh.logger.warn(`[dsh-metrics] failed to dispose session ${String(session.id)}: ${String(error)}`);
+          dsh.logger.warn(`[agentarts-dsh] failed to dispose session ${String(session.id)}: ${String(error)}`);
         }
       }),
       dsh.on("llm/stream", (options, next) => this.coordinator.interceptLlm(options, next))
@@ -44212,19 +44212,19 @@ var DshMetricsPlugin = class {
         try {
           this.coordinator?.closeAll();
         } catch (error) {
-          dsh.logger.warn(`[dsh-metrics] failed to close live spans: ${String(error)}`);
+          dsh.logger.warn(`[agentarts-dsh] failed to close live spans: ${String(error)}`);
         }
         await shutdownOtel();
-        log("[dsh-metrics] plugin unloaded");
+        log("[agentarts-dsh] plugin unloaded");
       },
       "dsh-metrics: detach listeners and shutdown OTLP"
     );
     const traceEndpoint = config.otel?.agentarts_agentops_apm_exporter_endpoint ?? "(not configured)";
     const metricEndpoint = config.otel?.agentarts_agentops_aom_exporter_endpoint ?? "(not configured)";
     dsh.logger.info(
-      `[dsh-metrics] loaded; traces=${traceEndpoint}; metrics=${metricEndpoint}; content=${config.features.captureMessageContent ? "enabled" : "disabled"}`
+      `[agentarts-dsh] loaded; traces=${traceEndpoint}; metrics=${metricEndpoint}; content=${config.features.captureMessageContent ? "enabled" : "disabled"}`
     );
-    log("[dsh-metrics] plugin loaded successfully");
+    log("[agentarts-dsh] plugin loaded successfully");
   }
 };
 export {

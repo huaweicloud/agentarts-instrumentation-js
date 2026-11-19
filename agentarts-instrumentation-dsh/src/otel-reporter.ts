@@ -120,10 +120,10 @@ function exportWithRetry<T>(
   let attempt = 0
   const run = () => {
     attempt += 1
-    if (attempt === 1) log(`[dsh-metrics] ${label} exporting`, describe())
+    if (attempt === 1) log(`[agentarts-dsh] ${label} exporting`, describe())
     rawExport(payload, (result) => {
       if (result.code === ExportResultCode.SUCCESS) {
-        log(`[dsh-metrics] ${label} export SUCCESS`, { ...describe(), attempt })
+        log(`[agentarts-dsh] ${label} export SUCCESS`, { ...describe(), attempt })
         onSuccess?.()
         callback(result)
         return
@@ -137,11 +137,11 @@ function exportWithRetry<T>(
       }
       if (attempt < EXPORT_MAX_ATTEMPTS) {
         const delay = EXPORT_RETRY_BACKOFF_MS[Math.min(attempt - 1, EXPORT_RETRY_BACKOFF_MS.length - 1)]
-        log(`[dsh-metrics] ${label} export failed, retrying in ${delay}ms`, detail)
+        log(`[agentarts-dsh] ${label} export failed, retrying in ${delay}ms`, detail)
         setTimeout(run, delay)
         return
       }
-      logError(`[dsh-metrics] ${label} export FAILED`, detail)
+      logError(`[agentarts-dsh] ${label} export FAILED`, detail)
       callback(result)
     })
   }
@@ -168,25 +168,25 @@ function initOtel(config: AgentArtsOtelConfig) {
     ctxManager.enable()
     context.setGlobalContextManager(ctxManager)
     contextManagerRegistered = true
-    log("[dsh-metrics] AsyncLocalStorageContextManager registered")
+    log("[agentarts-dsh] AsyncLocalStorageContextManager registered")
   }
   const apmEnabled = config.agentarts_agentops_otel_agent_apm_enable === true
   const aomEnabled = config.agentarts_agentops_otel_agent_aom_enable === true
   if (!apmEnabled && !aomEnabled) {
-    log("[dsh-metrics] OTel disabled (both APM and AOM are off)")
+    log("[agentarts-dsh] OTel disabled (both APM and AOM are off)")
     return
   }
   diag.setLogger(
     {
-      debug: (msg, ...args) => log("[OTel]", msg, ...args),
-      info: (msg, ...args) => log("[OTel]", msg, ...args),
-      warn: (msg, ...args) => log("[OTel][WARN]", msg, ...args),
-      error: (msg, ...args) => logError("[OTel]", msg, ...args),
+      debug: (msg, ...args) => log("[agentarts-dsh] [OTel]", msg, ...args),
+      info: (msg, ...args) => log("[agentarts-dsh] [OTel]", msg, ...args),
+      warn: (msg, ...args) => log("[agentarts-dsh] [OTel][WARN]", msg, ...args),
+      error: (msg, ...args) => logError("[agentarts-dsh] [OTel]", msg, ...args),
       verbose: () => {}
     },
     DiagLogLevel.INFO
   )
-  log("[dsh-metrics] OTel init config:", {
+  log("[agentarts-dsh] OTel init config:", {
     apmEnabled,
     aomEnabled,
     apmEndpoint: config.agentarts_agentops_apm_exporter_endpoint,
@@ -225,11 +225,11 @@ function initOtel(config: AgentArtsOtelConfig) {
         spanProcessors: [new BatchSpanProcessor(traceExporter)]
       })
       tracer = tracerProvider.getTracer(SCOPE_NAME, PROBE_VERSION)
-      log("[dsh-metrics] APM (Traces) initialized", {
+      log("[agentarts-dsh] APM (Traces) initialized", {
         endpoint: config.agentarts_agentops_apm_exporter_endpoint
       })
     } catch (error) {
-      logError("[dsh-metrics] APM init failed:", error)
+      logError("[agentarts-dsh] APM init failed:", error)
     }
   }
   if (aomEnabled) {
@@ -305,16 +305,16 @@ function initOtel(config: AgentArtsOtelConfig) {
           () => ({ totalDataPoints, endpoint: aomEndpoint, metricNames: metricNames.join(", ") }),
           () => {
             if (tokenCounterDetails.length > 0) {
-              logDebug("[dsh-metrics] AOM Token/Request Counter values:", tokenCounterDetails)
+              logDebug("[agentarts-dsh] AOM Token/Request Counter values:", tokenCounterDetails)
             }
             if (allMetricDetails.length > 0) {
-              logDebug("[dsh-metrics] AOM All Metric Details:", {
+              logDebug("[agentarts-dsh] AOM All Metric Details:", {
                 count: allMetricDetails.length,
                 details: allMetricDetails
               })
             }
             if (skillMetricDetails.length > 0) {
-              logDebug("[dsh-metrics] AOM Skill Metric Details:", {
+              logDebug("[agentarts-dsh] AOM Skill Metric Details:", {
                 count: skillMetricDetails.length,
                 details: skillMetricDetails
               })
@@ -416,12 +416,12 @@ function initOtel(config: AgentArtsOtelConfig) {
           unit: "1"
         })
       }
-      log("[dsh-metrics] AOM (Metrics) initialized", {
+      log("[agentarts-dsh] AOM (Metrics) initialized", {
         endpoint: aomEndpoint,
         protocol: "gRPC"
       })
     } catch (error) {
-      logError("[dsh-metrics] AOM init failed:", error)
+      logError("[agentarts-dsh] AOM init failed:", error)
     }
   }
 }
@@ -465,7 +465,7 @@ function beginRootSpan(
     span.setAttribute("gen_ai.span.kind", "AGENT")
     if (parentContext) span.setAttribute("dsh.subagent", true)
     const sc = span.spanContext()
-    log("[dsh-metrics] OTel root span begun:", {
+    log("[agentarts-dsh] OTel root span begun:", {
       name: spanName,
       traceId: sc.traceId,
       spanId: sc.spanId,
@@ -473,7 +473,7 @@ function beginRootSpan(
     })
     return { span, context: { traceId: sc.traceId, spanId: sc.spanId } }
   } catch (error) {
-    logError("[dsh-metrics] OTel beginRootSpan failed:", error)
+    logError("[agentarts-dsh] OTel beginRootSpan failed:", error)
     return undefined
   }
 }
@@ -487,23 +487,23 @@ function reportEvents(events: TurnEventRecord[], handle: RootSpanHandle | undefi
       const name = e["event.name"] || "unknown"
       typeCounts[name] = (typeCounts[name] || 0) + 1
     }
-    log("[dsh-metrics] OTel reportEvents start:", { total: events.length, types: typeCounts })
+    log("[agentarts-dsh] OTel reportEvents start:", { total: events.length, types: typeCounts })
     const turns = new Map<string, TurnEventRecord[]>()
     for (const event of events) {
       const turnId = event["gen_ai.turn.id"] || event.trace_id || "unknown"
       if (!turns.has(turnId)) turns.set(turnId, [])
       turns.get(turnId)!.push(event)
     }
-    log("[dsh-metrics] OTel processing", turns.size, "turn(s)")
+    log("[agentarts-dsh] OTel processing", turns.size, "turn(s)")
     let rootSpanContext
     for (const [turnId, turnEvents] of turns) {
       const ctx = processTurn(turnId, turnEvents, handle)
       if (ctx) rootSpanContext = ctx
     }
-    log("[dsh-metrics] OTel reportEvents done")
+    log("[agentarts-dsh] OTel reportEvents done")
     return rootSpanContext
   } catch (error) {
-    logError("[dsh-metrics] OTel reportEvents failed:", error)
+    logError("[agentarts-dsh] OTel reportEvents failed:", error)
     return undefined
   }
 }
@@ -514,7 +514,7 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
     const tb = b.time_unix_nano ? Number(b.time_unix_nano) : 0
     return ta - tb
   })
-  logDebug("[dsh-metrics] OTel processTurn:", turnId, "events:", events.length)
+  logDebug("[agentarts-dsh] OTel processTurn:", turnId, "events:", events.length)
   const otherEvent = events.find((e) => e["event.name"] === "other")
   const firstRequest = events.find((e) => e["event.name"] === "llm.request" && e["gen_ai.input.messages"])
   const lastResponse = [...events].reverse().find((e) => e["event.name"] === "llm.response" && e["gen_ai.output.messages"])
@@ -536,7 +536,7 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
       }
     }
   }
-  log("[dsh-metrics] OTel turn", turnId, "- LLM steps:", steps.size, "tool calls:", toolGroups.size)
+  log("[agentarts-dsh] OTel turn", turnId, "- LLM steps:", steps.size, "tool calls:", toolGroups.size)
   let rootSpan: Span | null = handle?.span ?? null
   let rootSpanCtx = handle?.context
   if (tracer && otherEvent) {
@@ -576,9 +576,9 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
           setAttr(rootSpan, "gen_ai.output.messages", toJsonAttr(outputMessages))
         }
       }
-      log("[dsh-metrics] OTel root agent span created:", turnId)
+      log("[agentarts-dsh] OTel root agent span created:", turnId)
     } catch (error) {
-      logError("[dsh-metrics] OTel root agent span creation failed:", { turnId, error })
+      logError("[agentarts-dsh] OTel root agent span creation failed:", { turnId, error })
     }
   }
   if (metricInstruments && otherEvent) {
@@ -587,7 +587,7 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
       if (userId) {
         const statusAttrs = buildUsageStatusAttrs(otherEvent)
         metricInstruments.usageStatusGauge.record(1, statusAttrs)
-        log("[dsh-metrics] OTel usage status gauge recorded:", { userId, attrs: statusAttrs })
+        log("[agentarts-dsh] OTel usage status gauge recorded:", { userId, attrs: statusAttrs })
       }
       const genAttrs = buildGenerationAttrs(otherEvent)
       metricInstruments.totalAgentRequests.add(1, genAttrs)
@@ -600,9 +600,9 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
           metricInstruments.agentDurationSeconds.record(turnDurationS, genAttrs)
         }
       }
-      log("[dsh-metrics] OTel agent metrics recorded:", { turnId, turnDurationS })
+      log("[agentarts-dsh] OTel agent metrics recorded:", { turnId, turnDurationS })
     } catch (error) {
-      logError("[dsh-metrics] OTel agent metric recording failed:", { turnId, error })
+      logError("[agentarts-dsh] OTel agent metric recording failed:", { turnId, error })
     }
   }
   let totalInputTokens = 0
@@ -664,7 +664,7 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
         startTime: stepStartMs,
         attributes: buildCommonSpanAttrs(otherEvent || events[0])
       }) : null
-      logDebug("[dsh-metrics] OTel react step created:", {
+      logDebug("[agentarts-dsh] OTel react step created:", {
         stepId: unit.stepId,
         llmRequestTimeRaw: llmReqEvent?.time_unix_nano ?? "(missing)",
         startNano: unit.startNano,
@@ -689,7 +689,7 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
       const stepCtx = stepSpan ? trace.setSpan(context.active(), stepSpan) : context.active()
       context.with(stepCtx, () => {
         // per-step 全量时间戳明细，仅 debug 记录（信息量大、无日常排障价值）
-        logDebug("[dsh-metrics] Step event timestamps:", {
+        logDebug("[agentarts-dsh] Step event timestamps:", {
           stepId: unit.stepId,
           llmEvents: unit.llmEvents.map((e) => ({
             name: e["event.name"],
@@ -727,7 +727,7 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
       if (stepSpan) {
         try {
           stepSpan.end(nanoToMs(String(lastNano)))
-          log("[dsh-metrics] OTel react step closed:", {
+          log("[agentarts-dsh] OTel react step closed:", {
             stepId: unit.stepId,
             startNano: unit.startNano,
             lastNano,
@@ -736,7 +736,7 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
             toolEvents: unit.toolEvents.length
           })
         } catch (error) {
-          logError("[dsh-metrics] OTel react step end failed:", { error })
+          logError("[agentarts-dsh] OTel react step end failed:", { error })
         }
       }
     }
@@ -758,14 +758,14 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
       if (metricInstruments.skillDurationSeconds) {
         metricInstruments.skillDurationSeconds.record(turnDurationS, skillAttrs)
       }
-      log("[dsh-metrics] OTel intent skill metrics recorded:", {
+      log("[agentarts-dsh] OTel intent skill metrics recorded:", {
         turnId,
         intentSkillName,
         turnDurationS,
         attrs: skillAttrs
       })
     } catch (error) {
-      logError("[dsh-metrics] OTel intent skill metric recording failed:", { turnId, intentSkillName, error })
+      logError("[agentarts-dsh] OTel intent skill metric recording failed:", { turnId, intentSkillName, error })
     }
   }
   if (rootSpan) {
@@ -785,12 +785,12 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
         const errMsg = String(failedResponse["error.message"] || failedResponse["error.type"]).slice(0, 500)
         rootSpan.setAttribute("gen_ai.call.status", false)
         rootSpan.setStatus({ code: SpanStatusCode.ERROR, message: errMsg })
-        log("[dsh-metrics] OTel root agent span marked ERROR:", { turnId, errorMessage: errMsg })
+        log("[agentarts-dsh] OTel root agent span marked ERROR:", { turnId, errorMessage: errMsg })
       }
       rootSpan.end(nanoToMs(events[events.length - 1].time_unix_nano))
       const sc = rootSpan.spanContext()
       rootSpanCtx = { traceId: sc.traceId, spanId: sc.spanId }
-      log("[dsh-metrics] OTel root agent span ended:", turnId, {
+      log("[agentarts-dsh] OTel root agent span ended:", turnId, {
         totalInputTokens,
         totalOutputTokens,
         totalTokens,
@@ -798,7 +798,7 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
         totalCacheWriteTokens
       })
     } catch (error) {
-      logError("[dsh-metrics] OTel root agent span end failed:", { turnId, error })
+      logError("[agentarts-dsh] OTel root agent span end failed:", { turnId, error })
     }
   }
   return rootSpanCtx
@@ -868,7 +868,7 @@ function processLlmSpan(events: TurnEventRecord[]) {
   const stepId = requestEvent?.["gen_ai.step.id"] || responseEvent?.["gen_ai.step.id"]
   const model = responseEvent?.["gen_ai.response.model"] || requestEvent?.["gen_ai.request.model"]
   const provider = requestEvent?.["gen_ai.provider.name"] || responseEvent?.["gen_ai.provider.name"]
-  logDebug("[dsh-metrics] OTel LLM span:", { stepId, model, provider, hasRequest: !!requestEvent, hasResponse: !!responseEvent })
+  logDebug("[agentarts-dsh] OTel LLM span:", { stepId, model, provider, hasRequest: !!requestEvent, hasResponse: !!responseEvent })
   if (tracer) {
     try {
       const llmSpanName = model ? `chat ${model}` : "chat"
@@ -934,9 +934,9 @@ function processLlmSpan(events: TurnEventRecord[]) {
         }
       }
       span.end(spanEndTime)
-      log("[dsh-metrics] OTel LLM span created:", stepId)
+      log("[agentarts-dsh] OTel LLM span created:", stepId)
     } catch (error) {
-      logError("[dsh-metrics] OTel LLM span creation failed:", { stepId, error })
+      logError("[agentarts-dsh] OTel LLM span creation failed:", { stepId, error })
     }
   }
   if (metricInstruments && responseEvent) {
@@ -969,9 +969,9 @@ function processLlmSpan(events: TurnEventRecord[]) {
       if (typeof tbt === "number" && tbt > 0) {
         metricInstruments.tbt.record(tbt, buildTTOMetricAttrs(responseEvent))
       }
-      log("[dsh-metrics] OTel LLM metrics recorded:", { stepId, inputTokens, outputTokens, model, llmDurationS, ttft, tbt })
+      log("[agentarts-dsh] OTel LLM metrics recorded:", { stepId, inputTokens, outputTokens, model, llmDurationS, ttft, tbt })
     } catch (error) {
-      logError("[dsh-metrics] OTel LLM metric recording failed:", { stepId, error })
+      logError("[agentarts-dsh] OTel LLM metric recording failed:", { stepId, error })
     }
   }
   if (metricInstruments && requestEvent) {
@@ -980,10 +980,10 @@ function processLlmSpan(events: TurnEventRecord[]) {
       if (sessionId) {
         const countAttrs = buildSessionCountAttrs(requestEvent)
         metricInstruments.sessionCountGauge.record(1, countAttrs)
-        log("[dsh-metrics] OTel session count gauge recorded:", { sessionId, attrs: countAttrs })
+        log("[agentarts-dsh] OTel session count gauge recorded:", { sessionId, attrs: countAttrs })
       }
     } catch (error) {
-      logError("[dsh-metrics] OTel session count failed:", { stepId, error })
+      logError("[agentarts-dsh] OTel session count failed:", { stepId, error })
     }
   }
   if (responseEvent) {
@@ -1001,7 +1001,7 @@ function processToolSpan(events: TurnEventRecord[], skipSkillMetrics = false) {
   const endTime = resultEvent ? nanoToMs(resultEvent.time_unix_nano) : startTime
   const toolName = callEvent?.["gen_ai.tool.name"] || resultEvent?.["gen_ai.tool.name"]
   const callId = callEvent?.["gen_ai.tool.call.id"] || resultEvent?.["gen_ai.tool.call.id"]
-  logDebug("[dsh-metrics] OTel tool span:", { toolName, callId, hasCall: !!callEvent, hasResult: !!resultEvent })
+  logDebug("[agentarts-dsh] OTel tool span:", { toolName, callId, hasCall: !!callEvent, hasResult: !!resultEvent })
   const skillName = parseSkillNameFromTool(callEvent, resultEvent)
   if (tracer) {
     try {
@@ -1038,9 +1038,9 @@ function processToolSpan(events: TurnEventRecord[], skipSkillMetrics = false) {
       setAttr(span, "gen_ai.call.status", toolCallStatus)
 
       span.end(endTime)
-      log("[dsh-metrics] OTel tool span created:", toolName, callId)
+      log("[agentarts-dsh] OTel tool span created:", toolName, callId)
     } catch (error) {
-      logError("[dsh-metrics] OTel tool span creation failed:", { toolName, callId, error })
+      logError("[agentarts-dsh] OTel tool span creation failed:", { toolName, callId, error })
     }
   }
   if (metricInstruments && callEvent) {
@@ -1065,14 +1065,14 @@ function processToolSpan(events: TurnEventRecord[], skipSkillMetrics = false) {
         const estimatedOutput = Math.ceil(String(resultStr).length / 4)
         metricInstruments.toolCallOutputTokens.add(estimatedOutput, attrs)
       }
-      log("[dsh-metrics] OTel tool metrics recorded:", toolName)
+      log("[agentarts-dsh] OTel tool metrics recorded:", toolName)
       if (skipSkillMetrics) {
-        log("[dsh-metrics] OTel skip tool-level skill metrics (intent already recorded):", toolName)
+        log("[agentarts-dsh] OTel skip tool-level skill metrics (intent already recorded):", toolName)
       } else if (toolName && toolName.toLowerCase() === "skill") {
         const skillName2 = parseSkillNameFromTool(callEvent, resultEvent)
         if (skillName2) {
           const skillAttrs = buildSkillMetricAttrs(metricEvent, skillName2)
-          logDebug("[dsh-metrics] OTel skill metric attributes:", {
+          logDebug("[agentarts-dsh] OTel skill metric attributes:", {
             skillName: skillName2,
             domainId: skillAttrs["domain.id"],
             resourceId: skillAttrs["gen_ai.resource.id"],
@@ -1083,22 +1083,22 @@ function processToolSpan(events: TurnEventRecord[], skipSkillMetrics = false) {
           })
           try {
             metricInstruments.skillCallCount.add(1, skillAttrs)
-            log("[dsh-metrics] OTel skillCallCount.add(1) succeeded for:", skillName2)
+            log("[agentarts-dsh] OTel skillCallCount.add(1) succeeded for:", skillName2)
           } catch (error) {
-            logError("[dsh-metrics] OTel skillCallCount.add(1) failed:", { skillName: skillName2, error })
+            logError("[agentarts-dsh] OTel skillCallCount.add(1) failed:", { skillName: skillName2, error })
           }
           try {
             metricInstruments.skillCallCountTotal.add(1, skillAttrs)
-            log("[dsh-metrics] OTel skillCallCountTotal.add(1) succeeded for:", skillName2)
+            log("[agentarts-dsh] OTel skillCallCountTotal.add(1) succeeded for:", skillName2)
           } catch (error) {
-            logError("[dsh-metrics] OTel skillCallCountTotal.add(1) failed:", { skillName: skillName2, error })
+            logError("[agentarts-dsh] OTel skillCallCountTotal.add(1) failed:", { skillName: skillName2, error })
           }
           if (skillAttrs["gen_ai.call.status"] === false) {
             try {
               metricInstruments.skillErrorCount.add(1, skillAttrs)
-              log("[dsh-metrics] OTel skillErrorCount.add(1) succeeded for failed skill:", skillName2)
+              log("[agentarts-dsh] OTel skillErrorCount.add(1) succeeded for failed skill:", skillName2)
             } catch (error) {
-              logError("[dsh-metrics] OTel skillErrorCount.add(1) failed:", { skillName: skillName2, error })
+              logError("[agentarts-dsh] OTel skillErrorCount.add(1) failed:", { skillName: skillName2, error })
             }
           }
           if (typeof durationMs === "number" && durationMs > 0) {
@@ -1108,13 +1108,13 @@ function processToolSpan(events: TurnEventRecord[], skipSkillMetrics = false) {
               if (metricInstruments.skillDurationSeconds) {
                 metricInstruments.skillDurationSeconds.record(durationSeconds, skillAttrs)
               }
-              log("[dsh-metrics] OTel skillDuration.record() succeeded:", {
+              log("[agentarts-dsh] OTel skillDuration.record() succeeded:", {
                 skillName: skillName2,
                 durationMs,
                 durationSeconds
               })
             } catch (error) {
-              logError("[dsh-metrics] OTel skillDuration.record() failed:", {
+              logError("[agentarts-dsh] OTel skillDuration.record() failed:", {
                 skillName: skillName2,
                 durationMs,
                 durationSeconds,
@@ -1122,19 +1122,19 @@ function processToolSpan(events: TurnEventRecord[], skipSkillMetrics = false) {
               })
             }
           } else {
-            log("[dsh-metrics] OTel skill duration not recorded:", {
+            log("[agentarts-dsh] OTel skill duration not recorded:", {
               skillName: skillName2,
               durationMs,
               type: typeof durationMs
             })
           }
-          log("[dsh-metrics] OTel skill metrics recording completed:", skillName2)
+          log("[agentarts-dsh] OTel skill metrics recording completed:", skillName2)
         } else {
-          log("[dsh-metrics] OTel skill detected but no skill name parsed from args:", argsStr)
+          log("[agentarts-dsh] OTel skill detected but no skill name parsed from args:", argsStr)
         }
       }
     } catch (error) {
-      logError("[dsh-metrics] OTel tool metric recording failed:", { toolName, callId, error })
+      logError("[agentarts-dsh] OTel tool metric recording failed:", { toolName, callId, error })
     }
   }
 }
@@ -1368,41 +1368,41 @@ function toGrpcUrl(endpoint: string | undefined) {
 async function shutdownOtel() {
   const promises: Promise<void>[] = []
   if (tracerProvider) {
-    log("[dsh-metrics] OTel shutting down APM (Traces)...")
+    log("[agentarts-dsh] OTel shutting down APM (Traces)...")
     promises.push(
       tracerProvider
         .shutdown()
         .then(() => {
           tracerProvider = null
           tracer = null
-          log("[dsh-metrics] OTel APM shutdown complete")
+          log("[agentarts-dsh] OTel APM shutdown complete")
         })
         .catch((error: unknown) => {
-          logError("[dsh-metrics] OTel APM shutdown failed:", error)
+          logError("[agentarts-dsh] OTel APM shutdown failed:", error)
           tracerProvider = null
           tracer = null
         })
     )
   }
   if (meterProvider) {
-    log("[dsh-metrics] OTel shutting down AOM (Metrics)...")
+    log("[agentarts-dsh] OTel shutting down AOM (Metrics)...")
     promises.push(
       meterProvider
         .shutdown()
         .then(() => {
           meterProvider = null
           metricInstruments = null
-          log("[dsh-metrics] OTel AOM shutdown complete")
+          log("[agentarts-dsh] OTel AOM shutdown complete")
         })
         .catch((error: unknown) => {
-          logError("[dsh-metrics] OTel AOM shutdown failed:", error)
+          logError("[agentarts-dsh] OTel AOM shutdown failed:", error)
           meterProvider = null
           metricInstruments = null
         })
     )
   }
   await Promise.allSettled(promises)
-  log("[dsh-metrics] OTel shutdown complete")
+  log("[agentarts-dsh] OTel shutdown complete")
 }
 
 export {

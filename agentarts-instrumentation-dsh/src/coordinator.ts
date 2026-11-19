@@ -476,7 +476,7 @@ export class DshTraceCoordinator {
     try {
       return this.onTurnComplete(events, handle)
     } catch (error) {
-      logError("[dsh-metrics] onTurnComplete callback failed:", error)
+      logError("[agentarts-dsh] onTurnComplete callback failed:", error)
       return undefined
     }
   }
@@ -801,12 +801,12 @@ export class DshTraceCoordinator {
   onTurnComplete: ((events: TurnEventRecord[], handle: RootSpanHandle | undefined) => any) | null = null
 
   private debug(message: string) {
-    if (this.config.features.debug) this.logger.debug?.(`[dsh-metrics] ${message}`)
-    logDebug("[dsh-metrics]", message)
+    if (this.config.features.debug) this.logger.debug?.(`[agentarts-dsh] ${message}`)
+    logDebug("[agentarts-dsh]", message)
   }
 
   private warn(message: string) {
-    this.logger.warn(`[dsh-metrics] ${message}`)
-    logError("[dsh-metrics]", message)
+    this.logger.warn(`[agentarts-dsh] ${message}`)
+    logError("[agentarts-dsh]", message)
   }
 }
