@@ -72,7 +72,7 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
 
 - `enabled`：总开关（false 时不采集）。
 - `otel.*`：APM/AOM 端点、认证信息与 AgentArts 控制台参数；`agentarts_agentops_otel_agent_apm_enable` / `..._aom_enable` 分别控制 trace / metric 上报。
-- `features.captureMessageContent`：是否采集消息内容（关闭后不上报 `gen_ai.input/output.messages`、工具参数/结果文本等）。配置脚本可直接切换：`-NoMessageContent` / `--no-message-content`（关闭）、`-CaptureMessageContent $true` / `--capture-message-content true`（开启）。
+- `features.captureMessageContent`：是否采集消息内容（关闭后不上报 `gen_ai.input/output.messages`、工具参数/结果文本等）。配置脚本可直接切换：`-NoMessageContent` / `--no-message-content`（关闭）、`-CaptureMessageContent $true` / `--capture-message-content true`（开启）。关闭时 `skill` 工具仍会上报**仅含技能名**的参数，用于技能维度识别。
 - `features.debug`：开启后写 DEBUG 明细日志。
 - `features.logRetentionDays`：按天保留 `data/logs` 日志，超期自动删除（默认 14，`0` 关闭清理）。
 

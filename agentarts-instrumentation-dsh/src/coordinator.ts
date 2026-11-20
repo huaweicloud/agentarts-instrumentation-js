@@ -178,6 +178,28 @@ function isVisibleToken(chunk: any) {
   return value.name !== undefined || (typeof value.argumentsDelta === "string" && value.argumentsDelta !== "")
 }
 
+/** 是否为 DSH 的 skill 工具（技能通过该工具加载）。 */
+export function isSkillToolName(name: unknown): boolean {
+  return typeof name === "string" && name.toLowerCase() === "skill"
+}
+
+/**
+ * 从 skill 工具的参数里取出技能名。
+ *
+ * skill 的参数形如 `{"name":"dsh-doc"}`（也兼容 `{"skill":"..."}`）。
+ * 解析失败返回 undefined，调用方据此决定是否写入参数。
+ */
+export function extractSkillName(argumentsJson: unknown): string | undefined {
+  if (typeof argumentsJson !== "string" || argumentsJson === "") return undefined
+  try {
+    const parsed = JSON.parse(argumentsJson)
+    const name = parsed?.skill ?? parsed?.name
+    return typeof name === "string" && name !== "" ? name : undefined
+  } catch {
+    return undefined
+  }
+}
+
 function scalarAttributes(session: DshSession, turn: number, agentName: string) {
   const header = session.header
   return {
@@ -682,6 +704,11 @@ export class DshTraceCoordinator {
     if (description) callEvent["gen_ai.tool.description"] = description
     if (this.config.features.captureMessageContent) {
       callEvent["gen_ai.tool.call.arguments"] = data.arguments
+    } else if (isSkillToolName(data.name)) {
+      // 隐私模式例外：skill 工具的参数只用来识别技能名（如 {"name":"dsh-doc"}），
+      // 这里只保留技能名、丢弃其余字段，避免把工具参数一并外发。
+      const skillName = extractSkillName(data.arguments)
+      if (skillName) callEvent["gen_ai.tool.call.arguments"] = JSON.stringify({ name: skillName })
     }
     turn.events.push(callEvent)
     step.tools.set(data.callId, {

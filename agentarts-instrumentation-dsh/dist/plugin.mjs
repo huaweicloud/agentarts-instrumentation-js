@@ -42324,6 +42324,19 @@ function isVisibleToken(chunk) {
   const value = chunk;
   return value.name !== void 0 || typeof value.argumentsDelta === "string" && value.argumentsDelta !== "";
 }
+function isSkillToolName(name) {
+  return typeof name === "string" && name.toLowerCase() === "skill";
+}
+function extractSkillName(argumentsJson) {
+  if (typeof argumentsJson !== "string" || argumentsJson === "") return void 0;
+  try {
+    const parsed = JSON.parse(argumentsJson);
+    const name = parsed?.skill ?? parsed?.name;
+    return typeof name === "string" && name !== "" ? name : void 0;
+  } catch {
+    return void 0;
+  }
+}
 function scalarAttributes(session, turn, agentName2) {
   const header = session.header;
   return {
@@ -42791,6 +42804,9 @@ var DshTraceCoordinator = class {
     if (description) callEvent["gen_ai.tool.description"] = description;
     if (this.config.features.captureMessageContent) {
       callEvent["gen_ai.tool.call.arguments"] = data.arguments;
+    } else if (isSkillToolName(data.name)) {
+      const skillName = extractSkillName(data.arguments);
+      if (skillName) callEvent["gen_ai.tool.call.arguments"] = JSON.stringify({ name: skillName });
     }
     turn.events.push(callEvent);
     step.tools.set(data.callId, {
