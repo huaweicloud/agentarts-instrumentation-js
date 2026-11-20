@@ -43521,6 +43521,8 @@ function processTurn(turnId, events, handle) {
       });
       if (stepSpan) {
         try {
+          const stepEvents = [...unit.llmEvents, ...unit.toolEvents];
+          applySpanStatus(stepSpan, !eventsHaveFailure(stepEvents), firstErrorMessage(stepEvents));
           stepSpan.end(nanoToMs(String(lastNano)));
           log("[agentarts-dsh] OTel react step closed:", {
             stepId: unit.stepId,
@@ -43579,8 +43581,10 @@ function processTurn(turnId, events, handle) {
       if (failedResponse) {
         const errMsg = String(failedResponse["error.message"] || failedResponse["error.type"]).slice(0, 500);
         rootSpan.setAttribute("gen_ai.call.status", false);
-        rootSpan.setStatus({ code: SpanStatusCode.ERROR, message: errMsg });
+        applySpanStatus(rootSpan, false, errMsg);
         log("[agentarts-dsh] OTel root agent span marked ERROR:", { turnId, errorMessage: errMsg });
+      } else {
+        applySpanStatus(rootSpan, true);
       }
       rootSpan.end(nanoToMs(events[events.length - 1].time_unix_nano));
       const sc = rootSpan.spanContext();
@@ -43698,7 +43702,9 @@ function processLlmSpan(events) {
           setAttr(span, "error.type", responseEvent["error.type"]);
           setAttr(span, "error.message", responseEvent["error.message"]);
           span.setAttribute("gen_ai.call.status", false);
-          span.setStatus({ code: SpanStatusCode.ERROR, message: String(responseEvent["error.message"] || responseEvent["error.type"]).slice(0, 500) });
+          applySpanStatus(span, false, responseEvent["error.message"] || responseEvent["error.type"]);
+        } else {
+          applySpanStatus(span, true);
         }
       }
       span.end(spanEndTime);
@@ -43800,6 +43806,11 @@ function processToolSpan(events, skipSkillMetrics = false) {
       }
       const toolCallStatus = resultEvent ? resultEvent["gen_ai.call.status"] !== false && resultEvent["gen_ai.call.status"] !== "false" : true;
       setAttr(span, "gen_ai.call.status", toolCallStatus);
+      if (!toolCallSucceeded(resultEvent)) {
+        applySpanStatus(span, false, resultEvent?.["error.message"] || resultEvent?.["error.type"]);
+      } else {
+        applySpanStatus(span, true);
+      }
       span.end(endTime);
       log("[agentarts-dsh] OTel tool span created:", toolName, callId);
     } catch (error) {
@@ -44060,6 +44071,30 @@ function setAttr(span, key, value) {
   if (value !== void 0 && value !== null) {
     span.setAttribute(key, value);
   }
+}
+function applySpanStatus(span, ok, message) {
+  if (ok) {
+    span.setStatus({ code: SpanStatusCode.OK });
+    return;
+  }
+  const text = message === void 0 || message === null || message === "" ? void 0 : String(message).slice(0, 500);
+  span.setStatus(text === void 0 ? { code: SpanStatusCode.ERROR } : { code: SpanStatusCode.ERROR, message: text });
+}
+function toolCallSucceeded(resultEvent) {
+  if (!resultEvent) return true;
+  const status = resultEvent["gen_ai.call.status"];
+  if (status === false || status === "false") return false;
+  return !resultEvent["error.type"];
+}
+function eventsHaveFailure(events) {
+  return events.some((e) => e["error.type"]);
+}
+function firstErrorMessage(events) {
+  for (const event of events) {
+    if (!event["error.type"] && !event["error.message"]) continue;
+    return String(event["error.message"] || event["error.type"]);
+  }
+  return void 0;
 }
 function nanoToMs(nano) {
   if (!nano) return Date.now();

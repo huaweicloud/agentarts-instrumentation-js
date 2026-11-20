@@ -726,6 +726,9 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
       })
       if (stepSpan) {
         try {
+          // 该 step 内任一 LLM 调用或工具调用失败，step 整体记为 ERROR
+          const stepEvents = [...unit.llmEvents, ...unit.toolEvents]
+          applySpanStatus(stepSpan, !eventsHaveFailure(stepEvents), firstErrorMessage(stepEvents))
           stepSpan.end(nanoToMs(String(lastNano)))
           log("[agentarts-dsh] OTel react step closed:", {
             stepId: unit.stepId,
@@ -784,8 +787,11 @@ function processTurn(turnId: string, events: TurnEventRecord[], handle: RootSpan
       if (failedResponse) {
         const errMsg = String(failedResponse["error.message"] || failedResponse["error.type"]).slice(0, 500)
         rootSpan.setAttribute("gen_ai.call.status", false)
-        rootSpan.setStatus({ code: SpanStatusCode.ERROR, message: errMsg })
+        applySpanStatus(rootSpan, false, errMsg)
         log("[agentarts-dsh] OTel root agent span marked ERROR:", { turnId, errorMessage: errMsg })
+      } else {
+        // 成功路径显式置 OK（默认 UNSET 会让平台无法判定成功）
+        applySpanStatus(rootSpan, true)
       }
       rootSpan.end(nanoToMs(events[events.length - 1].time_unix_nano))
       const sc = rootSpan.spanContext()
@@ -930,7 +936,10 @@ function processLlmSpan(events: TurnEventRecord[]) {
           setAttr(span, "error.type", responseEvent["error.type"])
           setAttr(span, "error.message", responseEvent["error.message"])
           span.setAttribute("gen_ai.call.status", false)
-          span.setStatus({ code: SpanStatusCode.ERROR, message: String(responseEvent["error.message"] || responseEvent["error.type"]).slice(0, 500) })
+          applySpanStatus(span, false, responseEvent["error.message"] || responseEvent["error.type"])
+        } else {
+          // 成功路径必须显式置 OK，否则会停留在 UNSET
+          applySpanStatus(span, true)
         }
       }
       span.end(spanEndTime)
@@ -1036,6 +1045,12 @@ function processToolSpan(events: TurnEventRecord[], skipSkillMetrics = false) {
         ? resultEvent["gen_ai.call.status"] !== false && resultEvent["gen_ai.call.status"] !== "false"
         : true
       setAttr(span, "gen_ai.call.status", toolCallStatus)
+      // 工具失败（含 step 结束前没有结果、结果里带 error.type）一律置 ERROR
+      if (!toolCallSucceeded(resultEvent)) {
+        applySpanStatus(span, false, resultEvent?.["error.message"] || resultEvent?.["error.type"])
+      } else {
+        applySpanStatus(span, true)
+      }
 
       span.end(endTime)
       log("[agentarts-dsh] OTel tool span created:", toolName, callId)
@@ -1317,6 +1332,43 @@ function setAttr(span: Span, key: string, value: AttributeValue | null | undefin
   if (value !== undefined && value !== null) {
     span.setAttribute(key, value)
   }
+}
+
+/**
+ * 统一设置 span 状态。
+ *
+ * OTel 的默认状态是 UNSET，必须在成功路径上显式置为 OK，否则平台侧无法区分
+ * "成功"与"未设置"。失败路径统一置 ERROR，并附带截断后的错误信息。
+ */
+export function applySpanStatus(span: Span, ok: boolean, message?: unknown) {
+  if (ok) {
+    span.setStatus({ code: SpanStatusCode.OK })
+    return
+  }
+  const text = message === undefined || message === null || message === "" ? undefined : String(message).slice(0, 500)
+  span.setStatus(text === undefined ? { code: SpanStatusCode.ERROR } : { code: SpanStatusCode.ERROR, message: text })
+}
+
+/** 工具调用是否成功：无结果事件视为成功，结果显式标记失败或带 error.type 视为失败。 */
+export function toolCallSucceeded(resultEvent: TurnEventRecord | undefined): boolean {
+  if (!resultEvent) return true
+  const status = resultEvent["gen_ai.call.status"]
+  if (status === false || status === "false") return false
+  return !resultEvent["error.type"]
+}
+
+/** 这组事件里是否存在失败（LLM 响应或工具结果带 error.type）。 */
+export function eventsHaveFailure(events: TurnEventRecord[]): boolean {
+  return events.some((e) => e["error.type"])
+}
+
+/** 从一组事件里取第一条错误信息，用于 span 的 status message。 */
+function firstErrorMessage(events: TurnEventRecord[]): string | undefined {
+  for (const event of events) {
+    if (!event["error.type"] && !event["error.message"]) continue
+    return String(event["error.message"] || event["error.type"])
+  }
+  return undefined
 }
 
 function nanoToMs(nano: string | undefined) {
