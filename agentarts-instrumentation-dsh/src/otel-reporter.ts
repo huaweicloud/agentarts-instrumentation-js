@@ -1047,7 +1047,11 @@ function processToolSpan(events: TurnEventRecord[], skipSkillMetrics = false) {
       setAttr(span, "gen_ai.call.status", toolCallStatus)
       // 工具失败（含 step 结束前没有结果、结果里带 error.type）一律置 ERROR
       if (!toolCallSucceeded(resultEvent)) {
-        applySpanStatus(span, false, resultEvent?.["error.message"] || resultEvent?.["error.type"])
+        applySpanStatus(
+          span,
+          false,
+          resultEvent?.["error.message"] || resultEvent?.["error.type"] || `tool ${String(toolName || "unknown")} failed`
+        )
       } else {
         applySpanStatus(span, true)
       }
@@ -1345,8 +1349,9 @@ export function applySpanStatus(span: Span, ok: boolean, message?: unknown) {
     span.setStatus({ code: SpanStatusCode.OK })
     return
   }
-  const text = message === undefined || message === null || message === "" ? undefined : String(message).slice(0, 500)
-  span.setStatus(text === undefined ? { code: SpanStatusCode.ERROR } : { code: SpanStatusCode.ERROR, message: text })
+  // ERROR 必须带 status_message，否则平台侧显示为空、无法据此排障
+  const text = message === undefined || message === null || message === "" ? "unknown error" : String(message).slice(0, 500)
+  span.setStatus({ code: SpanStatusCode.ERROR, message: text })
 }
 
 /** 工具调用是否成功：无结果事件视为成功，结果显式标记失败或带 error.type 视为失败。 */

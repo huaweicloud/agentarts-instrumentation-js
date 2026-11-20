@@ -43807,7 +43807,11 @@ function processToolSpan(events, skipSkillMetrics = false) {
       const toolCallStatus = resultEvent ? resultEvent["gen_ai.call.status"] !== false && resultEvent["gen_ai.call.status"] !== "false" : true;
       setAttr(span, "gen_ai.call.status", toolCallStatus);
       if (!toolCallSucceeded(resultEvent)) {
-        applySpanStatus(span, false, resultEvent?.["error.message"] || resultEvent?.["error.type"]);
+        applySpanStatus(
+          span,
+          false,
+          resultEvent?.["error.message"] || resultEvent?.["error.type"] || `tool ${String(toolName || "unknown")} failed`
+        );
       } else {
         applySpanStatus(span, true);
       }
@@ -44077,8 +44081,8 @@ function applySpanStatus(span, ok, message) {
     span.setStatus({ code: SpanStatusCode.OK });
     return;
   }
-  const text = message === void 0 || message === null || message === "" ? void 0 : String(message).slice(0, 500);
-  span.setStatus(text === void 0 ? { code: SpanStatusCode.ERROR } : { code: SpanStatusCode.ERROR, message: text });
+  const text = message === void 0 || message === null || message === "" ? "unknown error" : String(message).slice(0, 500);
+  span.setStatus({ code: SpanStatusCode.ERROR, message: text });
 }
 function toolCallSucceeded(resultEvent) {
   if (!resultEvent) return true;

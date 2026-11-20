@@ -37,17 +37,44 @@ test("applySpanStatus：错误消息超过 500 字符时截断", () => {
   assert.equal(span.calls[0].message.length, 500)
 })
 
-test("applySpanStatus：失败但无消息时仍置 ERROR", () => {
+test("applySpanStatus：失败但无消息时补默认 message（status_message 不能为空）", () => {
   const span = fakeSpan()
   applySpanStatus(span, false, undefined)
   assert.equal(span.calls[0].code, SpanStatusCode.ERROR)
-  assert.equal("message" in span.calls[0], false)
+  assert.equal(span.calls[0].message, "unknown error")
+
+  const span2 = fakeSpan()
+  applySpanStatus(span2, false, "")
+  assert.equal(span2.calls[0].message, "unknown error", "空串同样要补默认值")
 })
 
 /** 构造最小事件记录（TurnEventRecord 有 index signature，测试只需关心的字段）。 */
 function ev(fields: Record<string, any>): TurnEventRecord {
   return { "time_unix_nano": "0", "event.name": "other", ...fields } as TurnEventRecord
 }
+
+test("ERROR 状态一律携带非空 message（平台侧 status_message 不为空）", () => {
+  const cases: Array<[string, unknown]> = [
+    ["有错误消息", "DSH step ended before the tool result"],
+    ["只有 error.type", "TOOL_ERROR"],
+    ["完全没消息", undefined],
+    ["空串", ""]
+  ]
+  for (const [label, message] of cases) {
+    const span = fakeSpan()
+    applySpanStatus(span, false, message)
+    assert.equal(span.calls[0].code, SpanStatusCode.ERROR, label)
+    assert.equal(typeof span.calls[0].message, "string", `${label} 的 message 应为字符串`)
+    assert.ok(span.calls[0].message.length > 0, `${label} 的 message 不应为空`)
+  }
+})
+
+test("OK 状态不携带 message", () => {
+  const span = fakeSpan()
+  applySpanStatus(span, true, "不该出现")
+  assert.equal(span.calls[0].code, SpanStatusCode.OK)
+  assert.equal("message" in span.calls[0], false)
+})
 
 test("toolCallSucceeded：无结果事件视为成功", () => {
   assert.equal(toolCallSucceeded(undefined), true)
