@@ -42982,7 +42982,7 @@ function rootSpanName() {
 }
 var DURATION_HISTOGRAM_BUCKETS = [0.01, 0.02, 0.04, 0.08, 0.16, 0.32, 0.64, 1.28, 2.56, 5.12, 10.24, 20.48, 40.96, 81.92];
 var contextManagerRegistered = false;
-function initOtel(config) {
+function initOtel(config, testTracerProvider) {
   if (!contextManagerRegistered) {
     const ctxManager = new import_context_async_hooks.AsyncLocalStorageContextManager();
     ctxManager.enable();
@@ -43041,11 +43041,12 @@ function initOtel(config) {
           endpoint: apmEndpoint
         }));
       };
-      tracerProvider = new import_sdk_trace_base.BasicTracerProvider({
+      tracerProvider = testTracerProvider ?? new import_sdk_trace_base.BasicTracerProvider({
         resource,
         spanProcessors: [new import_sdk_trace_base.BatchSpanProcessor(traceExporter)]
       });
       tracer = tracerProvider.getTracer(SCOPE_NAME, PROBE_VERSION);
+      trace.setGlobalTracerProvider(tracerProvider);
       log("[agentarts-dsh] APM (Traces) initialized", {
         endpoint: config.agentarts_agentops_apm_exporter_endpoint
       });

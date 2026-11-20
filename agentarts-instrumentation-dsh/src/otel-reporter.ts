@@ -162,7 +162,7 @@ const DURATION_HISTOGRAM_BUCKETS = [0.01, 0.02, 0.04, 0.08, 0.16, 0.32, 0.64, 1.
 
 let contextManagerRegistered = false
 
-function initOtel(config: AgentArtsOtelConfig) {
+function initOtel(config: AgentArtsOtelConfig, testTracerProvider?: BasicTracerProvider) {
   if (!contextManagerRegistered) {
     const ctxManager = new AsyncLocalStorageContextManager()
     ctxManager.enable()
@@ -220,11 +220,13 @@ function initOtel(config: AgentArtsOtelConfig) {
           endpoint: apmEndpoint
         }))
       }
-      tracerProvider = new BasicTracerProvider({
+      // 测试接缝：注入带 InMemory 导出的 provider，避免真实网络与 OTLP 管线
+      tracerProvider = testTracerProvider ?? new BasicTracerProvider({
         resource,
         spanProcessors: [new BatchSpanProcessor(traceExporter)]
       })
       tracer = tracerProvider.getTracer(SCOPE_NAME, PROBE_VERSION)
+      trace.setGlobalTracerProvider(tracerProvider)
       log("[agentarts-dsh] APM (Traces) initialized", {
         endpoint: config.agentarts_agentops_apm_exporter_endpoint
       })
