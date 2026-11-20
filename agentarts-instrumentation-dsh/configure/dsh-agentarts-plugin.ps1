@@ -47,10 +47,11 @@ param(
     [string]$AomAccessCode,
     [string]$AomPrometheusId,
 
-    # 子 agent trace 是否串联到父 trace（不传则保持配置文件中的现状）
-    [Nullable[bool]]$LinkSubagentTrace,
-    # 是否上报输入输出等会话内容（不传则保持现状）；-NoMessageContent 为等价简写
-    [Nullable[bool]]$CaptureMessageContent,
+    # 子 agent trace 是否串联到父 trace：true / false（不传则保持现状）
+    [string]$LinkSubagentTrace,
+    # 是否上报输入输出等会话内容：true / false（不传则保持现状）
+    [string]$CaptureMessageContent,
+    # 等价于 -CaptureMessageContent false
     [switch]$NoMessageContent,
 
     [switch]$Help
@@ -178,6 +179,21 @@ function Protect-SecretFile([string]$Path) {
     else { Write-Warn "  could not restrict permissions on $(Split-Path $Path -Leaf) (continue)" }
 }
 
+# 解析可选的布尔参数：接受 true/false/1/0（大小写不限）；空值表示不修改，返回 $null。
+function ConvertTo-OptionalBool([string]$Value, [string]$Name) {
+    if (-not $Value) { return $null }
+    switch ($Value.Trim().ToLowerInvariant()) {
+        "true"  { return $true }
+        "false" { return $false }
+        "1"     { return $true }
+        "0"     { return $false }
+        default {
+            Write-Err "$Name must be true or false (got '$Value')"
+            exit 1
+        }
+    }
+}
+
 # ── 配置写入 ──────────────────────────────────────────────────────────
 function Write-PluginConfig {
     # 清理超出保留份数的旧备份（备份同样含明文凭据），再收紧剩余文件权限
@@ -201,10 +217,11 @@ function Write-PluginConfig {
     if ($UserId) { $updates["user.id"] = $UserId }
     if ($AgentName) { $updates["agent_name"] = $AgentName }
     $features = [ordered]@{}
-    if ($null -ne $LinkSubagentTrace) { $features["linkSubagentTrace"] = [bool]$LinkSubagentTrace }
-    $capture = $CaptureMessageContent
-    if ($NoMessageContent) { $capture = $false }
-    if ($null -ne $capture) { $features["captureMessageContent"] = [bool]$capture }
+    $linkValue = ConvertTo-OptionalBool $LinkSubagentTrace "-LinkSubagentTrace"
+    $captureValue = ConvertTo-OptionalBool $CaptureMessageContent "-CaptureMessageContent"
+    if ($NoMessageContent) { $captureValue = $false }
+    if ($null -ne $linkValue) { $features["linkSubagentTrace"] = $linkValue }
+    if ($null -ne $captureValue) { $features["captureMessageContent"] = $captureValue }
     if ($features.Count -gt 0) { $updates["features"] = $features }
     if ($otel.Count -gt 0) { $updates["otel"] = $otel }
 
@@ -328,10 +345,10 @@ Optional:
   -AomPrometheusId <id>  AOM Prometheus instance ID (required for AOM)
   -AgentName <name>      Agent name (gen_ai.agent.name)
   -UserId <id>                    User identifier (user.id; hostname when empty)
-  -LinkSubagentTrace <bool>       Link subagent traces to the parent trace
-  -CaptureMessageContent <bool>   Report conversation content: messages, system
-                                  instructions, tool arguments and results
-  -NoMessageContent               Shorthand for -CaptureMessageContent $false
+  -LinkSubagentTrace <true|false>       Link subagent traces to the parent trace
+  -CaptureMessageContent <true|false>   Report conversation content: messages, system
+                                        instructions, tool arguments and results
+  -NoMessageContent                     Shorthand for -CaptureMessageContent false
 
 Leaving -LinkSubagentTrace / -CaptureMessageContent out keeps the current value.
 
