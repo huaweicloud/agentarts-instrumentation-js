@@ -28,11 +28,11 @@
           "source": {
             "type": "git",
             "url": "https://github.com/huaweicloud/agentarts-instrumentation-js",
-            "commit": "33e8106fb7c45ad39cc56efa124e94794ec823ff",
+            "commit": "5f552948ff284a99083c22f9485e2d10640b6398",
             "path": "agentarts-instrumentation-dsh"
           },
           "engines": {
-            "dsh": "^0.2.1-rc.2"
+            "dsh": ">=0.2.1-rc.2"
           }
         }
       ]
