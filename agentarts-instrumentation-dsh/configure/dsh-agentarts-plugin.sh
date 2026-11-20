@@ -53,7 +53,9 @@ TOKEN=""
 AOM_ENDPOINT=""
 AOM_ACCESS_CODE=""
 AOM_PROMETHEUS_ID=""
-LINK_SUBAGENT_TRACE="true"
+# 空字符串 = 不修改配置中的现有值
+LINK_SUBAGENT_TRACE=""
+CAPTURE_MESSAGE_CONTENT=""
 
 info() { echo "[agentarts-config] $*"; }
 warn() { echo "[agentarts-config] WARN: $*"; }
@@ -95,7 +97,10 @@ Optional:
   --aom-prometheus-id <id>   AOM Prometheus instance ID (required for AOM)
   --agent-name <name>        Agent name (gen_ai.agent.name)
   --user-id <id>
-  --link-subagent-trace <true|false>
+  --link-subagent-trace <true|false>      Link subagent traces to the parent trace
+  --capture-message-content <true|false>  Report conversation content (messages,
+                                          system instructions, tool arguments/results)
+  --no-message-content                    Shorthand for --capture-message-content false
 
 Credential inputs:
   Prefer the environment variables DSH_AGENTARTS_APM_TOKEN and
@@ -122,11 +127,23 @@ while [ $# -gt 0 ]; do
         --aom-endpoint)        AOM_ENDPOINT="${2:-}"; shift 2 ;;
         --aom-access-code)     AOM_ACCESS_CODE="${2:-}"; shift 2 ;;
         --aom-prometheus-id)   AOM_PROMETHEUS_ID="${2:-}"; shift 2 ;;
-        --link-subagent-trace) LINK_SUBAGENT_TRACE="${2:-true}"; shift 2 ;;
+        --link-subagent-trace) LINK_SUBAGENT_TRACE="${2:-}"; shift 2 ;;
+        --capture-message-content) CAPTURE_MESSAGE_CONTENT="${2:-}"; shift 2 ;;
+        --no-message-content)  CAPTURE_MESSAGE_CONTENT="false"; shift ;;
         -h|--help)             usage; exit 0 ;;
         *) err "unknown option: $1"; usage >&2; exit 1 ;;
     esac
 done
+
+# 布尔开关只接受 true / false（空 = 不修改）
+case "$LINK_SUBAGENT_TRACE" in
+    ""|true|false) ;;
+    *) err "--link-subagent-trace must be true or false (got '$LINK_SUBAGENT_TRACE')"; exit 1 ;;
+esac
+case "$CAPTURE_MESSAGE_CONTENT" in
+    ""|true|false) ;;
+    *) err "--capture-message-content must be true or false (got '$CAPTURE_MESSAGE_CONTENT')"; exit 1 ;;
+esac
 
 # 凭据支持从环境变量读取，避免出现在命令行（会进入 shell 历史与进程列表）
 if [ -z "$TOKEN" ] && [ -n "${DSH_AGENTARTS_APM_TOKEN:-}" ]; then
@@ -170,7 +187,7 @@ cmd_configure() {
     updates_file="$(mktemp)"
     # 该临时文件含明文凭据：即使后续失败退出也要删除
     trap 'rm -f "$updates_file"' EXIT
-    AGENT_ID="$AGENT_ID" AGENT_NAME="$AGENT_NAME" LINK_SUBAGENT_TRACE="$LINK_SUBAGENT_TRACE" DOMAIN_ID="$DOMAIN_ID" PROJECT_ID="$PROJECT_ID" \
+    AGENT_ID="$AGENT_ID" AGENT_NAME="$AGENT_NAME" LINK_SUBAGENT_TRACE="$LINK_SUBAGENT_TRACE" CAPTURE_MESSAGE_CONTENT="$CAPTURE_MESSAGE_CONTENT" DOMAIN_ID="$DOMAIN_ID" PROJECT_ID="$PROJECT_ID" \
     TOKEN="$TOKEN" ENDPOINT="$ENDPOINT" AOM_ACCESS_CODE="$AOM_ACCESS_CODE" \
     AOM_ENDPOINT="$AOM_ENDPOINT" AOM_PROMETHEUS_ID="$AOM_PROMETHEUS_ID" \
     USER_ID="$USER_ID" node --input-type=commonjs - "$updates_file" <<'EOF'
@@ -190,9 +207,13 @@ for (const [k, val] of Object.entries(v)) if (val) otel[k] = val
 const updates = {}
 if (process.env.USER_ID) updates['user.id'] = process.env.USER_ID
 if (process.env.AGENT_NAME) updates['agent_name'] = process.env.AGENT_NAME
-if (process.env.LINK_SUBAGENT_TRACE !== undefined && process.env.LINK_SUBAGENT_TRACE !== '') updates.features = { linkSubagentTrace: process.env.LINK_SUBAGENT_TRACE === 'true' }
+const features = {}
+if (process.env.LINK_SUBAGENT_TRACE) features.linkSubagentTrace = process.env.LINK_SUBAGENT_TRACE === 'true'
+if (process.env.CAPTURE_MESSAGE_CONTENT) features.captureMessageContent = process.env.CAPTURE_MESSAGE_CONTENT === 'true'
+if (Object.keys(features).length) updates.features = features
 if (Object.keys(otel).length) updates.otel = otel
-fs.writeFileSync(process.argv[1], JSON.stringify(updates))
+// 脚本经 stdin（node - 参数）执行时 argv[1] 是 "-"，真实参数从 argv[2] 开始
+fs.writeFileSync(process.argv[2], JSON.stringify(updates))
 EOF
     # merge-config（内嵌 node 脚本；与 ps1 同步维护）
     out="$(node --input-type=commonjs - "$CONFIG_PATH" "$updates_file" 2>&1 <<'NODE_MERGE'

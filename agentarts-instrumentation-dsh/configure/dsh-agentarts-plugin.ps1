@@ -47,8 +47,11 @@ param(
     [string]$AomAccessCode,
     [string]$AomPrometheusId,
 
-    # 是否串联子 agent trace（默认 true）
-    [bool]$LinkSubagentTrace = $true,
+    # 子 agent trace 是否串联到父 trace（不传则保持配置文件中的现状）
+    [Nullable[bool]]$LinkSubagentTrace,
+    # 是否上报输入输出等会话内容（不传则保持现状）；-NoMessageContent 为等价简写
+    [Nullable[bool]]$CaptureMessageContent,
+    [switch]$NoMessageContent,
 
     [switch]$Help
 )
@@ -197,7 +200,12 @@ function Write-PluginConfig {
     $updates = [ordered]@{}
     if ($UserId) { $updates["user.id"] = $UserId }
     if ($AgentName) { $updates["agent_name"] = $AgentName }
-    if ($LinkSubagentTrace -ne $null) { $updates["features"] = [ordered]@{ linkSubagentTrace = $LinkSubagentTrace } }
+    $features = [ordered]@{}
+    if ($null -ne $LinkSubagentTrace) { $features["linkSubagentTrace"] = [bool]$LinkSubagentTrace }
+    $capture = $CaptureMessageContent
+    if ($NoMessageContent) { $capture = $false }
+    if ($null -ne $capture) { $features["captureMessageContent"] = [bool]$capture }
+    if ($features.Count -gt 0) { $updates["features"] = $features }
     if ($otel.Count -gt 0) { $updates["otel"] = $otel }
 
     $updatesFile = Join-Path $env:TEMP "agentarts-config-updates-$PID.json"
@@ -319,7 +327,13 @@ Optional:
   -AomAccessCode <code>  AOM access code (required for AOM)
   -AomPrometheusId <id>  AOM Prometheus instance ID (required for AOM)
   -AgentName <name>      Agent name (gen_ai.agent.name)
-  -UserId, -LinkSubagentTrace <bool>
+  -UserId <id>                    User identifier (user.id; hostname when empty)
+  -LinkSubagentTrace <bool>       Link subagent traces to the parent trace
+  -CaptureMessageContent <bool>   Report conversation content: messages, system
+                                  instructions, tool arguments and results
+  -NoMessageContent               Shorthand for -CaptureMessageContent $false
+
+Leaving -LinkSubagentTrace / -CaptureMessageContent out keeps the current value.
 
 Credential inputs:
   Prefer the environment variables DSH_AGENTARTS_APM_TOKEN and
