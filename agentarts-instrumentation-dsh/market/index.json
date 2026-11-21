@@ -28,7 +28,7 @@
           "source": {
             "type": "git",
             "url": "https://github.com/huaweicloud/agentarts-instrumentation-js",
-            "commit": "4c15385c124a7a86a84979566cc8bbcd8729dad7",
+            "commit": "6b1ae9809ae40ded69abee55320b34e801b69856",
             "path": "agentarts-instrumentation-dsh"
           },
           "engines": {
