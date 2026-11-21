@@ -1,6 +1,6 @@
 # huaweicloud-agentarts-observation-dsh-plugin
 
-DSH（DeepSeek Harness）可观测插件：采集 DSH 运行时的 **trace**（会话/turn/step、LLM 调用、工具调用、子 agent 串联）与 **metric**（token 用量、耗时、TTFT/TBT、工具/技能统计），经 OTLP gRPC 上报华为云 **AgentArts** 平台——trace 到 **APM**，metric 到 **AOM**。
+DSH（DeepSeek Harness）可观测插件：采集 DSH 运行时的 **trace**（会话/turn/step、LLM 调用、工具调用、子 agent 串联），经 OTLP gRPC 上报华为云 **AgentArts** 平台的 **APM**。
 
 > 面向最终用户的完整接入流程（获取参数 → 安装 → 配置 → 重启 → 验证 → 常见问题）见
 > [docs/接入指导.md](docs/接入指导.md)；希望让 AI 代为完成接入的，把
@@ -13,7 +13,7 @@ DSH（DeepSeek Harness）可观测插件：采集 DSH 运行时的 **trace**（�
 ├── src/                        # TypeScript 源码（运行时代码全部内联打包，依赖仅 devDependencies）
 │   ├── plugin.ts               # 插件入口：服务类默认导出，订阅 session 事件 + 拦截 llm/stream
 │   ├── coordinator.ts          # 事件协调器：session/turn/step/LLM/tool 生命周期 → AgentArts EventRecord
-│   ├── otel-reporter.ts        # OTel 层：APM trace span 层级 + AOM metric 注册与上报
+│   ├── otel-reporter.ts        # OTel 层：APM trace span 层级构建与上报
 │   ├── mapping.ts              # DSH 消息结构 → AgentArts gen_ai 规范字段映射
 │   ├── config.ts               # 运行配置加载（~/.dsh/plugins/<插件包名>/config.json，支持 JSONC）
 │   ├── logger.ts               # 按日切分的文件日志（<outputDir>/logs/plugin-YYYY-MM-DD.log）
@@ -38,18 +38,18 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
                                                               │ 聚合为 EventRecord（gen_ai.* 规范字段）
                                                               ▼
                                                         otel-reporter
-                                              ┌───────────────┴───────────────┐
-                                              ▼                               ▼
-                                    APM（trace，OTLP gRPC）        AOM（metric，OTLP gRPC）
-                                    span：invoke_agent             counter / histogram / gauge
-                                          └─ react step                  （60s 周期导出）
-                                               ├─ chat <model>
-                                               └─ execute_tool <tool>
+                                                              │
+                                                              ▼
+                                                    APM（trace，OTLP gRPC）
+                                                    span：invoke_agent
+                                                          └─ react step
+                                                               ├─ chat <model>
+                                                               └─ execute_tool <tool>
 ```
 
 - **trace 结构**：每个 turn 一个 `invoke_agent` root span，其下按 step 组织 `react step`，包含 `chat <model>`（LLM 调用）与 `execute_tool <tool>`（工具调用）；`features.linkSubagentTrace` 开启时，子 agent 的 root span 以父 trace 为 parent。
 
-- **metric 清单**：token（input/output/cache）、请求数、LLM 耗时、TTFT/TBT、agent 耗时、工具调用数/耗时、技能调用数/耗时/失败数、会话/用量状态 gauge；点号命名指标同时注册下划线别名（对齐 AOM 的 `_seconds` 后缀转换规则）。
+- **指标能力**：token 用量、耗时、TTFT/TBT、工具与技能统计等指标实现保留在代码中，**默认关闭**，不在本文档展开。
 
 #### 子 agent trace 串联的边界
 
@@ -71,18 +71,18 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
 运行时读取 `~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json`（支持 `//` 注释），字段说明见 [config.example.json](config.example.json)。要点：
 
 - `enabled`：总开关（false 时不采集）。
-- `otel.*`：APM/AOM 端点、认证信息与 AgentArts 控制台参数；`agentarts_agentops_otel_agent_apm_enable` / `..._aom_enable` 分别控制 trace / metric 上报。
+- `otel.*`：APM 端点、认证信息与 AgentArts 控制台参数；`agentarts_agentops_otel_agent_apm_enable` 控制 trace 上报。
 - `features.captureMessageContent`：是否采集消息内容（关闭后不上报 `gen_ai.input/output.messages`、工具参数/结果文本等）。配置脚本可直接切换：`-NoMessageContent` / `--no-message-content`（关闭）、`-CaptureMessageContent $true` / `--capture-message-content true`（开启）。关闭时 `skill` 工具仍会上报**仅含技能名**的参数，用于技能维度识别。
 - `features.debug`：开启后写 DEBUG 明细日志。
 - `features.logRetentionDays`：按天保留 `data/logs` 日志，超期自动删除（默认 14，`0` 关闭清理）。
 
-**启动校验**：插件加载时对 config.json 做字段校验，问题以 `[agentarts-dsh] config warning [字段]: ...` 形式输出到 DSH 主日志与文件日志：未知键给出最近键拼写建议（如 `agent_nam` → `agent_name`）、APM/AOM 开启但必填项缺失、已废弃的 `resource_type` / `resource_version`（资源类型固定 `agent`、资源版本取 DSH 版本，配置里写了会被忽略）、`features` 字段类型错误等。均为告警级，不阻止运行。
+**启动校验**：插件加载时对 config.json 做字段校验，问题以 `[agentarts-dsh] config warning [字段]: ...` 形式输出到 DSH 主日志与文件日志：未知键给出最近键拼写建议（如 `agent_nam` → `agent_name`）、APM 开启但必填项缺失、已废弃的 `resource_type` / `resource_version`（资源类型固定 `agent`、资源版本取 DSH 版本，配置里写了会被忽略）、`features` 字段类型错误等。均为告警级，不阻止运行。
 
 **热重载**：运行期修改 config.json 后（300ms 防抖），`features.*`（debug / captureMessageContent / linkSubagentTrace / logRetentionDays）与 `agent_name` 即时生效，无需重启；`otel`、`enabled`、`outputDir`、`user.id` 的变更只提示「需重启 DSH 生效」（OTel 管线与 userId 在构造期绑定）。解析失败时保持当前配置并告警。
 
 配置由安装脚本从命令行参数生成/合并（保留无关字段，写入前备份）；也可手工维护。
 
-**凭据处理**：脚本写入 `config.json` 后会自动收紧文件权限（Windows 下移除继承，仅保留当前用户、SYSTEM、Administrators；Linux/macOS 下 `chmod 600`），历史备份同样处理，并只保留最近 5 份备份——备份同样含明文凭据。凭据也可以通过环境变量 `DSH_AGENTARTS_APM_TOKEN` / `DSH_AGENTARTS_AOM_ACCESS_CODE` 提供，避免出现在命令行（会被 shell 历史与进程列表记录）。
+**凭据处理**：脚本写入 `config.json` 后会自动收紧文件权限（Windows 下移除继承，仅保留当前用户、SYSTEM、Administrators；Linux/macOS 下 `chmod 600`），历史备份同样处理，并只保留最近 5 份备份——备份同样含明文凭据。凭据也可以通过环境变量 `DSH_AGENTARTS_APM_TOKEN` 提供，避免出现在命令行（会被 shell 历史与进程列表记录）。
 
 安全审查的范围、已修复问题与残余风险见 [SECURITY-NOTES.md](SECURITY-NOTES.md)。
 
@@ -189,16 +189,14 @@ bundle 行由 [cordis.patch.yml](cordis.patch.yml) 提供；安装后重启 DSH 
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass   # 仅当前窗口
 .\configure\dsh-agentarts-plugin.ps1 -AgentId <id> -ProjectId <id> `
   -Endpoint https://apm-access.<region>.myhuaweicloud.com -Token <token> `
-  -AomEndpoint https://aom-access.<region>.myhuaweicloud.com `
-  -AomAccessCode <code> -AomPrometheusId <id> -AgentName <name>
+  -AgentName <name> -CaptureMessageContent true
 ```
 
 ```sh
 # Linux / macOS / WSL
 ./configure/dsh-agentarts-plugin.sh --agent-id <id> --project-id <id> \
   --endpoint https://apm-access.<region>.myhuaweicloud.com --token <token> \
-  --aom-endpoint https://aom-access.<region>.myhuaweicloud.com \
-  --aom-access-code <code> --aom-prometheus-id <id> --agent-name <name>
+  --agent-name <name> --capture-message-content true
 ```
 
 也可以直接手工编辑 `~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json`
@@ -255,13 +253,13 @@ DSH 从 Git 安装时拉的是**源码，不会运行构建**（`.gitignore` 中
 
 | 层 | 内容 | 结果 |
 |---|---|---|
-| 数据面 | 真实 coordinator + 真实 OTel 管线 → 真实 APM/AOM 端点 | APM trace、AOM metric 均导出成功（AOM 12–18 datapoint） |
+| 数据面 | 真实 coordinator + 真实 OTel 管线 → 真实 APM 端点 | APM trace 导出成功（含 9 span 批次的重试救回） |
 | 组合面 | `install_bundle` 装入 desktop profile | `application: applied`，插件在真实 DSH 进程中加载成功 |
 | 真机面 | 安装脚本装入 Desktop，重启后跑真实对话 | **trace 成功送达 APM**：9 个 span，root span `invoke_agent zsh_DSH` |
 
 ### 该环境的网络特征（重要）
 
-到 `apm-access.cn-southwest-2` / `aom-access.cn-southwest-2` 的 TCP 443 建链成功率实测仅 **2/6 ~ 5/12**，失败均为 `connect ETIMEDOUT`（单次约 21 秒）。由此产生两处针对性设计：
+到 `apm-access.cn-southwest-2` 的 TCP 443 建链成功率实测仅 **2/6 ~ 5/12**，失败均为 `connect ETIMEDOUT`（单次约 21 秒）。由此产生两处针对性设计：
 
 1. **`timeoutMillis: 30000`**（默认 10s 不够完成 TCP+TLS+HTTP/2 建链）
 2. **导出失败重试 3 次，退避 2s/8s**：`BatchSpanProcessor` 与 `PeriodicExportingMetricReader` 在导出失败时会直接丢弃整批数据；退避必须盖过 grpc-js 通道自身的重连退避，否则重试会复用坏通道并瞬时失败。
@@ -279,8 +277,8 @@ DSH 从 Git 安装时拉的是**源码，不会运行构建**（`.gitignore` 中
 已完成：
 
 - [x] 2026-11-18 清理未使用变量（`closeTurn` 的 `finishReason`；`otel-reporter` 的 `idGenerator`/`otelConfig`/模块级 `meter`）。
-- [x] 2026-11-18 日志量治理：AOM 导出明细（全量 dataPoints）仅在 `debug` 开启时收集；per-step 时间戳明细与 LLM/tool span 前置详情降级 DEBUG；新增日志按天保留（`features.logRetentionDays`，默认 14 天，`0` 关闭）。
-- [x] 2026-11-18 config.json 配置校验 + 热重载：启动时校验字段（未知键给最近键拼写建议、APM/AOM 必填项、类型与取值）；运行期 `features.*` 与 `agent_name` 热生效，`otel`/`enabled`/`outputDir`/`user.id` 变更提示需重启；解析失败保持当前配置。
+- [x] 2026-11-18 日志量治理：指标导出明细（全量 dataPoints）仅在 `debug` 开启时收集；per-step 时间戳明细与 LLM/tool span 前置详情降级 DEBUG；新增日志按天保留（`features.logRetentionDays`，默认 14 天，`0` 关闭）。
+- [x] 2026-11-18 config.json 配置校验 + 热重载：启动时校验字段（未知键给最近键拼写建议、APM 必填项、类型与取值）；运行期 `features.*` 与 `agent_name` 热生效，`otel`/`enabled`/`outputDir`/`user.id` 变更提示需重启；解析失败保持当前配置。
 - [x] 2026-11-18 OTel 层类型化：`otel-reporter.ts` 的 `tracerProvider`/`meterProvider`/`tracer`/`Span`/导出回调/`setAttr` 全部改用 `@opentelemetry/api`、`sdk-trace-base`、`sdk-metrics`、`@opentelemetry/core`（新增显式 devDependency）的真实类型，`any` 归零；`setStatus` 改用 `SpanStatusCode.ERROR`；父 trace 串联改走官方 `trace.wrapSpanContext()`（行为等价，新增行为测试覆盖）。
 
 待办：
@@ -297,5 +295,5 @@ DSH 从 Git 安装时拉的是**源码，不会运行构建**（`.gitignore` 中
 
 按产品决定暂不处理（2026-11-18）：
 
-- [⏸] AOM 点号/下划线双命名指标收敛——保持双命名上报，待 AOM 平台侧验证出指标名转换结论后再决定去留。
+- [⏸] 指标点号/下划线双命名收敛——指标上报默认关闭，双命名实现保留，待需要时再定去留。
 - [⏸] trace 采样——保持全量采集，不加采样开关。

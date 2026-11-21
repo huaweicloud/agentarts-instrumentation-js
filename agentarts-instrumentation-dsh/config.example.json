@@ -32,8 +32,8 @@
   "otel": {
     // APM（trace）总开关
     "agentarts_agentops_otel_agent_apm_enable": true,
-    // AOM（metric）总开关
-    "agentarts_agentops_otel_agent_aom_enable": true,
+    // AOM（metric）总开关（默认关闭；仅在明确需要指标上报时开启）
+    "agentarts_agentops_otel_agent_aom_enable": false,
     // ── AgentArts 控制台参数 ──
     "agent_domain_id": "", // 租户/域 ID（domain.id）
     "agentarts_project_id": "", // 项目 ID（projectid 元数据）
