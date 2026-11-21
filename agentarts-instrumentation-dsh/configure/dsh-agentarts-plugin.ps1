@@ -4,12 +4,12 @@
 
 .DESCRIPTION
   Writes / merges the plugin's runtime configuration at
-    ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json
+    ~/.dsh/plugins/agentarts-instrumentation-dsh/config.json
   and hardens its file permissions.
 
   It does NOT install the plugin and never touches a DSH profile.
   Install the plugin first via the DSH plugin market, or in a web profile with:
-    dsh plugin --profile web add huaweicloud-agentarts-observation-dsh-plugin
+    dsh plugin --profile web add agentarts-instrumentation-dsh
 
   Subcommands (first positional argument; default: configure):
     configure  Write or merge the reporting configuration (backup -> merge).
@@ -62,9 +62,9 @@ $ErrorActionPreference = "Stop"
 # (node writes progress/warnings to stderr); harmless no-op on PS 5.1.
 $PSNativeCommandUseErrorActionPreference = $false
 
-$script:PluginName = "huaweicloud-agentarts-observation-dsh-plugin"
+$script:PluginName = "agentarts-instrumentation-dsh"
 # 配置/数据目录用的目录名（不带 scope，与包名一致）
-$script:PluginDirName = "huaweicloud-agentarts-observation-dsh-plugin"
+$script:PluginDirName = "agentarts-instrumentation-dsh"
 # 配置/数据目录：~/.dsh/plugins/<目录名>/（DSH 插件归属区，pnpm 不管理，重装不丢）
 $script:PluginHome = Join-Path $env:USERPROFILE ".dsh\plugins\$($script:PluginDirName)"
 $script:MetricsConfig = Join-Path $script:PluginHome "config.json"
@@ -103,7 +103,7 @@ deepMerge(config, updates)
 if (!existed) {
   const defaults = {
     version: '1.0.0', enabled: true,
-    outputDir: path.join(os.homedir(), '.dsh', 'plugins', 'huaweicloud-agentarts-observation-dsh-plugin', 'data').replaceAll('\\\\', '/'),
+    outputDir: path.join(os.homedir(), '.dsh', 'plugins', 'agentarts-instrumentation-dsh', 'data').replaceAll('\\\\', '/'),
     agent_name: '', 'user.id': '',
     features: { debug: false, captureMessageContent: true, linkSubagentTrace: true, logRetentionDays: 14 },
     otel: { agentarts_agentops_otel_agent_apm_enable: true, agentarts_agentops_otel_agent_aom_enable: false,
@@ -317,12 +317,12 @@ function Show-Help {
 DSH AgentArts Observation Plugin - configuration script.
 
 This script only writes the plugin configuration:
-  ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json
+  ~/.dsh/plugins/agentarts-instrumentation-dsh/config.json
 It does not install the plugin and does not modify any DSH profile.
 
 Install the plugin first:
   desktop : DSH 客户端 -> Plugins -> Discover / Add plugin
-  web     : dsh plugin --profile web add huaweicloud-agentarts-observation-dsh-plugin
+  web     : dsh plugin --profile web add agentarts-instrumentation-dsh
 
 Usage:
   .\dsh-agentarts-plugin.ps1 -AgentId <id> -ProjectId <id> `

@@ -1,4 +1,4 @@
-# huaweicloud-agentarts-observation-dsh-plugin
+# agentarts-instrumentation-dsh
 
 DSH（DeepSeek Harness）可观测插件：采集 DSH 运行时的 **trace**（会话/turn/step、LLM 调用、工具调用、子 agent 串联），经 OTLP gRPC 上报华为云 **AgentArts** 平台的 **APM**。
 
@@ -67,7 +67,7 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
 
 ## 运行配置
 
-运行时读取 `~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json`（支持 `//` 注释），字段说明见 [config.example.json](config.example.json)。要点：
+运行时读取 `~/.dsh/plugins/agentarts-instrumentation-dsh/config.json`（支持 `//` 注释），字段说明见 [config.example.json](config.example.json)。要点：
 
 - `enabled`：总开关（false 时不采集）。
 - `otel.*`：APM 端点、认证信息与 AgentArts 控制台参数；`agentarts_agentops_otel_agent_apm_enable` 控制 trace 上报。
@@ -121,7 +121,7 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
 
 ### 步骤一：安装插件
 
-插件发布在插件市场与 npm 仓库，包名 `huaweicloud-agentarts-observation-dsh-plugin`。
+插件发布在插件市场与 npm 仓库，包名 `agentarts-instrumentation-dsh`。
 
 **desktop 形态**：在 DSH 客户端 **Plugins** → **Discover**（插件市场）安装，或在 **Add plugin** 中按包名安装。
 
@@ -130,7 +130,7 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
 **web 形态**：
 
 ```sh
-dsh plugin --profile web add huaweicloud-agentarts-observation-dsh-plugin
+dsh plugin --profile web add agentarts-instrumentation-dsh
 ```
 
 bundle 行由 [cordis.patch.yml](cordis.patch.yml) 提供；安装后重启 DSH 以加载新模块代。
@@ -143,7 +143,7 @@ bundle 行由 [cordis.patch.yml](cordis.patch.yml) 提供；安装后重启 DSH 
 **Linux / macOS**
 
 ```bash
-SCRIPT=~/.dsh/profiles/<profile>/node_modules/huaweicloud-agentarts-observation-dsh-plugin/configure/dsh-agentarts-plugin.sh
+SCRIPT=~/.dsh/profiles/<profile>/node_modules/agentarts-instrumentation-dsh/configure/dsh-agentarts-plugin.sh
 bash "$SCRIPT" --agent-id <id> --domain-id <id> --project-id <id> \
   --endpoint https://apm-access.<region>.myhuaweicloud.com \
   --agent-name <agent-name> --capture-message-content true
@@ -152,7 +152,7 @@ bash "$SCRIPT" --agent-id <id> --domain-id <id> --project-id <id> \
 **Windows（PowerShell）**
 
 ```powershell
-$script = "$env:USERPROFILE\.dsh\profiles\<profile>\node_modules\huaweicloud-agentarts-observation-dsh-plugin\configure\dsh-agentarts-plugin.ps1"
+$script = "$env:USERPROFILE\.dsh\profiles\<profile>\node_modules\agentarts-instrumentation-dsh\configure\dsh-agentarts-plugin.ps1"
 powershell -NoProfile -ExecutionPolicy Bypass -File $script `
   -AgentId <id> -DomainId <id> -ProjectId <id> `
   -Endpoint https://apm-access.<region>.myhuaweicloud.com `
@@ -161,7 +161,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $script `
 
 > 凭据建议通过环境变量提供（`DSH_AGENTARTS_APM_TOKEN`），避免进入命令历史。
 
-也可以直接手工编辑 `~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json`
+也可以直接手工编辑 `~/.dsh/plugins/agentarts-instrumentation-dsh/config.json`
 （模板见 [config.example.json](config.example.json)）。
 
 查看当前配置摘要（不打印凭据内容）：
@@ -184,9 +184,9 @@ web 重启 `dsh web` 进程）。`features.*` 与 `agent_name` 支持热生效�
 ### 卸载
 
 插件卸载由 DSH 自身完成：desktop 在 **Plugins** 页卸载，web 执行
-`dsh plugin --profile web remove huaweicloud-agentarts-observation-dsh-plugin`。
+`dsh plugin --profile web remove agentarts-instrumentation-dsh`。
 配置文件不随卸载删除，如需清理请手动删除
-`~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/`。
+`~/.dsh/plugins/agentarts-instrumentation-dsh/`。
 
 ### 为什么 `dist/plugin.mjs` 要入库
 

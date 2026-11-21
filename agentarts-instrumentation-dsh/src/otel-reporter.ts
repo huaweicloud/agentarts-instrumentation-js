@@ -94,7 +94,7 @@ function captureContent() {
   return captureContentEnabled
 }
 
-const SCOPE_NAME = "huaweicloud-agentarts-observation-dsh-plugin"
+const SCOPE_NAME = "agentarts-instrumentation-dsh"
 
 // 导出超时（毫秒）。OTLP 默认 10s，在跨境/弱网链路上不足以完成 TCP+TLS+HTTP/2
 // 建链（实测有约 40% 连接超时、需要重试），会导致首个周期丢数据。取 30s 折中：

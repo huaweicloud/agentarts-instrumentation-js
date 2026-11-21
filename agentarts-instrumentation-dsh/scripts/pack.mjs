@@ -4,7 +4,7 @@
 //   scoped 包 @scope/name  → scope-name-<version>.tgz（带 scope 前缀）
 //   非 scoped 包 name      → name-<version>.tgz
 //
-// 本包当前是非 scoped（huaweicloud-agentarts-observation-dsh-plugin），
+// 本包当前是非 scoped（agentarts-instrumentation-dsh），
 // 产物名已符合要求；脚本保留 scoped 分支，便于将来若重新加 scope 时继续工作。
 import fs from "node:fs"
 

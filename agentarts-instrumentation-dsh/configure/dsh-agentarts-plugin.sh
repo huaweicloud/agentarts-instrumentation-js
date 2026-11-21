@@ -3,13 +3,13 @@
 # DSH AgentArts Observation Plugin - configuration script (Linux / macOS / WSL).
 #
 # Writes / merges the plugin configuration at
-#   ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json
+#   ~/.dsh/plugins/agentarts-instrumentation-dsh/config.json
 # and hardens its file permissions.
 #
 # It does NOT install the plugin and never touches a DSH profile.
 # Install the plugin first:
 #   desktop : DSH 客户端 -> Plugins -> Discover / Add plugin
-#   web     : dsh plugin --profile web add huaweicloud-agentarts-observation-dsh-plugin
+#   web     : dsh plugin --profile web add agentarts-instrumentation-dsh
 #
 # Subcommands (first positional argument; default: configure):
 #   configure  Write or merge the reporting configuration (backup -> merge).
@@ -27,9 +27,9 @@
 
 set -euo pipefail
 
-PLUGIN_NAME="huaweicloud-agentarts-observation-dsh-plugin"
+PLUGIN_NAME="agentarts-instrumentation-dsh"
 # 配置/数据目录用的目录名（不带 scope，与包名一致）
-PLUGIN_DIR_NAME="huaweicloud-agentarts-observation-dsh-plugin"
+PLUGIN_DIR_NAME="agentarts-instrumentation-dsh"
 # 配置/数据目录：~/.dsh/plugins/<目录名>/（DSH 插件归属区，pnpm 不管理，重装不丢）
 PLUGIN_HOME="$HOME/.dsh/plugins/$PLUGIN_DIR_NAME"
 CONFIG_PATH="$PLUGIN_HOME/config.json"
@@ -66,12 +66,12 @@ cat <<'EOF'
 DSH AgentArts Observation Plugin - configuration script.
 
 This script only writes the plugin configuration:
-  ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json
+  ~/.dsh/plugins/agentarts-instrumentation-dsh/config.json
 It does not install the plugin and does not modify any DSH profile.
 
 Install the plugin first:
   desktop : DSH 客户端 -> Plugins -> Discover / Add plugin
-  web     : dsh plugin --profile web add huaweicloud-agentarts-observation-dsh-plugin
+  web     : dsh plugin --profile web add agentarts-instrumentation-dsh
 
 Usage:
   ./dsh-agentarts-plugin.sh --agent-id <id> --project-id <id> \
@@ -245,7 +245,7 @@ deepMerge(config, updates)
 if (!existed) {
   const defaults = {
     version: '1.0.0', enabled: true,
-    outputDir: path.join(os.homedir(), '.dsh', 'plugins', 'huaweicloud-agentarts-observation-dsh-plugin', 'data').replaceAll('\\\\', '/'),
+    outputDir: path.join(os.homedir(), '.dsh', 'plugins', 'agentarts-instrumentation-dsh', 'data').replaceAll('\\\\', '/'),
     agent_name: '', 'user.id': '',
     features: { debug: false, captureMessageContent: true, linkSubagentTrace: true, logRetentionDays: 14 },
     otel: { agentarts_agentops_otel_agent_apm_enable: true, agentarts_agentops_otel_agent_aom_enable: false,

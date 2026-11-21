@@ -1,7 +1,7 @@
 // DSH 插件入口：服务类默认导出。
 // 订阅 session 生命周期事件 + 拦截 llm/stream，把 DSH 运行时观测数据
 // 经 coordinator 聚合后由 otel-reporter 上报 AgentArts APM（trace）/AOM（metric）。
-// 运行参数从 ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json 读取。
+// 运行参数从 ~/.dsh/plugins/agentarts-instrumentation-dsh/config.json 读取。
 import * as os from "node:os"
 import * as path from "node:path"
 import { CONFIG_PATH, detectDshVersion, loadConfig, resolveOutputDir, validateConfig, watchConfig } from "./config.js"

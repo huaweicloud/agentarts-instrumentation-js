@@ -6,14 +6,14 @@
   },
   "plugins": [
     {
-      "name": "huaweicloud-agentarts-observation-dsh-plugin",
+      "name": "agentarts-instrumentation-dsh",
       "title": {
         "en": "AgentArts observation",
         "zh": "AgentArts 可观测上报"
       },
       "description": {
-        "en": "Collects DeepSeek Harness runtime traces and reports them to Huawei Cloud AgentArts APM over OTLP gRPC. Note: conversation content is reported by default - user messages, assistant replies, system instructions, tool call arguments and results, plus the working directory and hostname. If a session may contain sensitive data, set features.captureMessageContent to false in ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json (applies without a restart and keeps performance metrics). Endpoints and credentials live in the same file and can be generated with the configuration script in the repository's configure/ directory. Turning this plugin off stops all reporting; DSH sessions and logs are unaffected.",
-        "zh": "采集 DeepSeek Harness 运行时的调用链 trace，经 OTLP gRPC 上报华为云 AgentArts 的 APM。注意：默认会上报会话内容——用户消息、助手回复、系统提示词、工具调用的参数与结果，以及工作目录和主机名；如会话可能包含敏感信息，请在 ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json 中把 features.captureMessageContent 设为 false（热生效，仍保留性能指标）。端点与鉴权配置在同一文件，可使用仓库 configure/ 目录中的配置脚本生成。关闭本插件即停止上报，不影响 DSH 会话与日志。"
+        "en": "Collects DeepSeek Harness runtime traces and reports them to Huawei Cloud AgentArts APM over OTLP gRPC. Note: conversation content is reported by default - user messages, assistant replies, system instructions, tool call arguments and results, plus the working directory and hostname. If a session may contain sensitive data, set features.captureMessageContent to false in ~/.dsh/plugins/agentarts-instrumentation-dsh/config.json (applies without a restart and keeps performance metrics). Endpoints and credentials live in the same file and can be generated with the configuration script in the repository's configure/ directory. Turning this plugin off stops all reporting; DSH sessions and logs are unaffected.",
+        "zh": "采集 DeepSeek Harness 运行时的调用链 trace，经 OTLP gRPC 上报华为云 AgentArts 的 APM。注意：默认会上报会话内容——用户消息、助手回复、系统提示词、工具调用的参数与结果，以及工作目录和主机名；如会话可能包含敏感信息，请在 ~/.dsh/plugins/agentarts-instrumentation-dsh/config.json 中把 features.captureMessageContent 设为 false（热生效，仍保留性能指标）。端点与鉴权配置在同一文件，可使用仓库 configure/ 目录中的配置脚本生成。关闭本插件即停止上报，不影响 DSH 会话与日志。"
       },
       "icon": "../icon.svg",
       "author": "Huawei Cloud",
@@ -23,7 +23,7 @@
       },
       "versions": [
         {
-          "version": "1.0.0-rc.1",
+          "version": "1.0.0-rc.2",
           "publishTimestamp": 1795248902,
           "source": {
             "type": "git",

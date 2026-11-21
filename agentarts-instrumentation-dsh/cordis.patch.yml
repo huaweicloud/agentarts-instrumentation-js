@@ -1,9 +1,9 @@
 # DSH AgentArts Observation Plugin. This bundle owns its OTLP gRPC pipeline
 # and reports to AgentArts APM/AOM.
 # Actual reporting config is loaded from
-# ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json at runtime.
+# ~/.dsh/plugins/agentarts-instrumentation-dsh/config.json at runtime.
 - insert:
-    - id: huaweicloud-agentarts-observation-dsh
-      name: 'huaweicloud-agentarts-observation-dsh-plugin'
+    - id: agentarts-instrumentation-dsh
+      name: 'agentarts-instrumentation-dsh'
       config:
         enabled: true

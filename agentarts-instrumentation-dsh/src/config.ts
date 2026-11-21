@@ -1,4 +1,4 @@
-// 配置加载：~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json
+// 配置加载：~/.dsh/plugins/agentarts-instrumentation-dsh/config.json
 // 支持 // 与 /* */ 注释（JSONC）。
 // 启动时经 validateConfig 校验并输出告警；运行期 watchConfig 监听变更，
 // 轻量字段（features/agent_name 等）热生效，otel/enabled 变更提示需重启。
@@ -10,13 +10,13 @@ const PLUGIN_HOME = path.join(
   os.homedir(),
   ".dsh",
   "plugins",
-  "huaweicloud-agentarts-observation-dsh-plugin"
+  "agentarts-instrumentation-dsh"
 )
 export const CONFIG_PATH = path.join(PLUGIN_HOME, "config.json")
 
 const DEFAULT_CONFIG = {
   // 基础配置
-  version: "1.0.0-rc.1",
+  version: "1.0.0-rc.2",
   enabled: true,
   agent_name: "",
   outputDir: path.join(PLUGIN_HOME, "data"),
