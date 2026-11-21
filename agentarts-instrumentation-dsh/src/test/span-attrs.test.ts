@@ -6,6 +6,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { buildCommonSpanAttrs } from "../otel-reporter.js"
+import { PROBE_VERSION } from "../probe-version.generated.js"
 
 const baseEvent = {
   "event.name": "other",
@@ -61,7 +62,7 @@ test("buildCommonSpanAttrs：保留的公共属性不受影响", () => {
   assert.equal(attrs["gen_ai.resource.type"], "agent")
   assert.equal(attrs["gen_ai.project.id"], "p1")
   assert.equal(attrs["resource_version"], "1.0.0")
-  assert.equal(attrs["probe_version"], "1.0.0")
+  assert.equal(attrs["probe_version"], PROBE_VERSION)
 })
 
 test("buildCommonSpanAttrs：conversation.id 存在时优先于 session.id", () => {

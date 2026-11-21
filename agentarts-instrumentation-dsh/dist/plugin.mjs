@@ -41695,7 +41695,7 @@ var PLUGIN_HOME = path.join(
 var CONFIG_PATH = path.join(PLUGIN_HOME, "config.json");
 var DEFAULT_CONFIG = {
   // 基础配置
-  version: "1.0.0",
+  version: "1.0.0-rc.1",
   enabled: true,
   agent_name: "",
   outputDir: path.join(PLUGIN_HOME, "data"),
@@ -42940,7 +42940,7 @@ var import_exporter_trace_otlp_grpc = __toESM(require_src12(), 1);
 var import_exporter_metrics_otlp_grpc = __toESM(require_src14(), 1);
 
 // src/probe-version.generated.ts
-var PROBE_VERSION = "1.0.0";
+var PROBE_VERSION = "1.0.0-rc.1";
 
 // src/otel-reporter.ts
 var tracerProvider = null;
