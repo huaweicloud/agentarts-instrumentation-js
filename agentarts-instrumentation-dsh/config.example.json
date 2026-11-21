@@ -28,12 +28,10 @@
     // 日志保留天数：自动删除更早的 plugin-YYYY-MM-DD.log（0 关闭清理）
     "logRetentionDays": 14
   },
-  // OpenTelemetry 上报配置（APM trace / AOM metric；默认不配置则不上报）
+  // OpenTelemetry 上报配置（APM 调用链；默认不配置则不上报）
   "otel": {
     // APM（trace）总开关
     "agentarts_agentops_otel_agent_apm_enable": true,
-    // AOM（metric）总开关（默认关闭；仅在明确需要指标上报时开启）
-    "agentarts_agentops_otel_agent_aom_enable": false,
     // ── AgentArts 控制台参数 ──
     "agent_domain_id": "", // 租户/域 ID（domain.id）
     "agentarts_project_id": "", // 项目 ID（projectid 元数据）
@@ -46,11 +44,6 @@
     //   https://apm-access.<region>.myhuaweicloud.com   （生产域名，TLS/443）
     //   apm-access.<region>.myhuaweicloud.com:443       （域名:端口）
     //   10.x.x.x:4317                                   （内网明文 gRPC）
-    "agentarts_agentops_apm_exporter_endpoint": "",
-    // ── AOM（metric）OTLP gRPC ──
-    "agentarts_agentops_aom_access_code": "", // AOM 接入码（gRPC metadata: authorization: Bearer）
-    // 写法同上方 APM 端点，例如 https://aom-access.<region>.myhuaweicloud.com
-    "agentarts_agentops_aom_exporter_endpoint": "",
-    "agentarts_agentops_aom_prometheus_id": "" // AOM Prometheus 实例 ID（gRPC metadata: promid）
+    "agentarts_agentops_apm_exporter_endpoint": ""
   }
 }

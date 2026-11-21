@@ -182,44 +182,47 @@ bundle 行由 [cordis.patch.yml](cordis.patch.yml) 提供；安装后重启 DSH 
 
 ### 步骤二：配置接入信息
 
-`configure/` 目录下的脚本**只写配置**，不安装插件、不改动 profile：
+`configure/` 目录下的脚本**只写配置**，不安装插件、不改动 profile。脚本可从发布地址直接下载执行：
+
+**Linux / macOS**
+
+```bash
+curl -fsSL <脚本下载地址>/dsh-agentarts-plugin.sh -o /tmp/dsh-agentarts-plugin.sh \
+  && bash /tmp/dsh-agentarts-plugin.sh \
+       --agent-id <id> --endpoint https://apm-access.<region>.myhuaweicloud.com \
+       --agent-name <name> --capture-message-content true
+```
+
+**Windows（PowerShell）**
 
 ```powershell
-# Windows
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass   # 仅当前窗口
-.\configure\dsh-agentarts-plugin.ps1 -AgentId <id> -ProjectId <id> `
-  -Endpoint https://apm-access.<region>.myhuaweicloud.com -Token <token> `
+$script = Join-Path $env:TEMP "dsh-agentarts-plugin.ps1"
+Invoke-WebRequest <脚本下载地址>/dsh-agentarts-plugin.ps1 -OutFile $script
+Unblock-File $script
+powershell -NoProfile -ExecutionPolicy Bypass -File $script `
+  -AgentId <id> -Endpoint https://apm-access.<region>.myhuaweicloud.com `
   -AgentName <name> -CaptureMessageContent true
 ```
 
-```sh
-# Linux / macOS / WSL
-./configure/dsh-agentarts-plugin.sh --agent-id <id> --project-id <id> \
-  --endpoint https://apm-access.<region>.myhuaweicloud.com --token <token> \
-  --agent-name <name> --capture-message-content true
-```
+> 凭据建议通过环境变量提供（`DSH_AGENTARTS_APM_TOKEN`），避免进入命令历史。
+> 插件安装后也可直接使用包内脚本：
+> `~/.dsh/profiles/<profile>/node_modules/huaweicloud-agentarts-observation-dsh-plugin/configure/`。
 
 也可以直接手工编辑 `~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json`
 （模板见 [config.example.json](config.example.json)）。
 
 查看当前配置摘要（不打印凭据内容）：
 
-```powershell
-.\configure\dsh-agentarts-plugin.ps1 status
+```bash
+bash /tmp/dsh-agentarts-plugin.sh status
 ```
 
 关闭会话内容采集（敏感场景，热生效，无需重启）：
 
-```powershell
-.\configure\dsh-agentarts-plugin.ps1 -NoMessageContent
+```bash
+bash /tmp/dsh-agentarts-plugin.sh --no-message-content
 ```
 
-```sh
-./configure/dsh-agentarts-plugin.sh --no-message-content
-```
-
-> **上报地址格式**：不做格式校验，`https://host`、`host:443`、`10.x.x.x:4317` 等写法都可以。
-> 缺少协议或端口时由插件的 `toGrpcUrl` 补全：域名补 `https://`、带端口按 443/其他区分 https/http、裸 IPv4 补 `:4317`。
 
 ### 步骤三：重启 DSH
 
