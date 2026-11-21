@@ -113,51 +113,6 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
 
 建议同时显式设置 `user.id`（避免主机名外发）并避免在会话中粘贴真实凭据。
 
-## 开发
-
-```sh
-pnpm install        # 或 npm install（依赖仅在开发/打包期使用，运行时零依赖）
-pnpm build          # tsc 类型检查 + 编译（dist/*.js，测试用）→ esbuild 打包 dist/plugin.mjs
-pnpm test           # node --test dist/test/*.test.js（先 build）
-pnpm typecheck      # 仅类型检查
-```
-
-- 版本号唯一事实来源是 `package.json`；`build.mjs` 会把它写入 `src/probe-version.generated.ts` 再打包。
-- 修改源码后重新 `pnpm build`，产物即 `dist/plugin.mjs`。
-
-## 打包发布
-
-```sh
-pnpm pack:bundle    # npm pack + 重命名 → huaweicloud-agentarts-observation-dsh-plugin-<version>.tgz
-```
-
-npm 产物名为 `huaweicloud-agentarts-observation-dsh-plugin-<version>.tgz`（`scripts/pack.mjs` 会校验并归一化文件名）。
-
-### 发布流水线
-
-```sh
-npm run release              # 完整流程
-node scripts/release.mjs --dry-run   # 只检查不写索引
-```
-
-依次执行：构建（tsc + esbuild）→ **产物漂移校验** → 全量测试 → 打包清单校验 → 生成插件市场索引。
-
-**产物漂移校验**是本流水线的核心：`dist/plugin.mjs` 作为分发产物入库，DSH 从 Git 安装时直接使用它、不会构建。若改了 `src/` 却忘记重新构建提交，用户会装到旧逻辑，而肉眼极难发现。脚本会重新构建并与仓库中的产物比对，不一致即失败并要求提交。
-
-其余校验：`files` 清单每一项都存在、产物含 `createRequire` banner（缺失会导致宿主加载失败）、`dsh.bundle.patch` 指向的文件存在。
-
-发布流程：
-
-```sh
-git add -A && git commit -m "chore: 发布 v1.0.0"
-git tag v1.0.0
-node scripts/release.mjs --commit "$(git rev-parse v1.0.0)"   # 让索引精确指向发布提交
-git add market/index.json && git commit -m "chore: 更新索引指向 v1.0.0"
-git push origin HEAD --tags
-```
-
-插件市场索引说明见 [market/README.md](market/README.md)。
-
 ## 安装与配置
 
 接入分三步：**安装插件 → 配置接入信息 → 重启 DSH**。面向最终用户的完整流程
@@ -218,7 +173,6 @@ bash "$SCRIPT" status
 bash "$SCRIPT" --no-message-content
 ```
 
-
 ### 步骤三：重启 DSH
 
 `otel` 段在插件加载时绑定 OTLP 管线，**不支持热更新**，配置后必须重启（desktop 完全退出客户端，
@@ -244,54 +198,3 @@ DSH 从 Git 安装时拉的是**源码，不会运行构建**（`.gitignore` 中
 
 - DSH：`engines.dsh = >=0.2.1-rc.2`（安装时校验，不设上界）。
 - Node：`>= 24.9.0`。
-
-## 端到端验证记录（2026-11-18，华为云 cn-southwest-2）
-
-真实环境验证结论，可作为后续回归基线：
-
-| 层 | 内容 | 结果 |
-|---|---|---|
-| 数据面 | 真实 coordinator + 真实 OTel 管线 → 真实 APM 端点 | APM trace 导出成功（含 9 span 批次的重试救回） |
-| 组合面 | `install_bundle` 装入 desktop profile | `application: applied`，插件在真实 DSH 进程中加载成功 |
-| 真机面 | 安装脚本装入 Desktop，重启后跑真实对话 | **trace 成功送达 APM**：9 个 span，root span `invoke_agent zsh_DSH` |
-
-### 该环境的网络特征（重要）
-
-到 `apm-access.cn-southwest-2` 的 TCP 443 建链成功率实测仅 **2/6 ~ 5/12**，失败均为 `connect ETIMEDOUT`（单次约 21 秒）。由此产生两处针对性设计：
-
-1. **`timeoutMillis: 30000`**（默认 10s 不够完成 TCP+TLS+HTTP/2 建链）
-2. **导出失败重试 3 次，退避 2s/8s**：`BatchSpanProcessor` 与 `PeriodicExportingMetricReader` 在导出失败时会直接丢弃整批数据；退避必须盖过 grpc-js 通道自身的重连退避，否则重试会复用坏通道并瞬时失败。
-
-实测中一次失败丢失了 61 个 span，因此重试是必要的而非优化项。
-
-### 排障提示
-
-- 日志无任何导出记录 → 先确认该周期内是否真的记录过指标（`PeriodicExportingMetricReader` 在 `scopeMetrics` 为空时会静默跳过导出）
-- `DEADLINE_EXCEEDED` / `UNAVAILABLE` → 链路抖动，看是否出现 `export failed, retrying in …ms` 后跟 `SUCCESS`
-- 重试用的是同一批 span，不会产生重复 trace
-
-## 后续优化方向
-
-已完成：
-
-- [x] 2026-11-18 清理未使用变量（`closeTurn` 的 `finishReason`；`otel-reporter` 的 `idGenerator`/`otelConfig`/模块级 `meter`）。
-- [x] 2026-11-18 日志量治理：指标导出明细（全量 dataPoints）仅在 `debug` 开启时收集；per-step 时间戳明细与 LLM/tool span 前置详情降级 DEBUG；新增日志按天保留（`features.logRetentionDays`，默认 14 天，`0` 关闭）。
-- [x] 2026-11-18 config.json 配置校验 + 热重载：启动时校验字段（未知键给最近键拼写建议、APM 必填项、类型与取值）；运行期 `features.*` 与 `agent_name` 热生效，`otel`/`enabled`/`outputDir`/`user.id` 变更提示需重启；解析失败保持当前配置。
-- [x] 2026-11-18 OTel 层类型化：`otel-reporter.ts` 的 `tracerProvider`/`meterProvider`/`tracer`/`Span`/导出回调/`setAttr` 全部改用 `@opentelemetry/api`、`sdk-trace-base`、`sdk-metrics`、`@opentelemetry/core`（新增显式 devDependency）的真实类型，`any` 归零；`setStatus` 改用 `SpanStatusCode.ERROR`；父 trace 串联改走官方 `trace.wrapSpanContext()`（行为等价，新增行为测试覆盖）。
-
-待办：
-
-- 与 DSH 相关的 `any`（`session`/`event.data`/LLM chunk/`options`，集中在 `coordinator.ts`、`mapping.ts`、`plugin.ts`）保持现状，见下方「等触发条件」。
-
-等触发条件的待办（2026-11-18 评估，暂缓）：
-
-- [ ] DSH 事件负载类型化 + `strict` 模式。
-  - **运行时影响为零**：类型在编译期擦除，插件行为、性能、上报结果均不变；收益仅在开发期（改 coordinator 生命周期逻辑时的字段名/结构检查、IDE 补全）。
-  - **代价**：类型只能来自 DSH 源码快照（需随 DSH 升级人工同步）或 `import type` 直接依赖 dsh 包（构建与 DSH 版本耦合）。当前宿主为 `0.2.x-rc`，事件结构仍可能变动。
-  - **现状是健壮的**：插件作为观察者，靠 `?.`、`??`、`=== undefined` 防御性读取，宿主字段变动时运行时通常继续工作。
-  - **触发条件（任一满足再做）**：① 需要对 `coordinator.ts` 做实质性重构；② DSH API 稳定（脱离 rc）；③ 多人协作维护该插件。
-
-按产品决定暂不处理（2026-11-18）：
-
-- [⏸] 指标点号/下划线双命名收敛——指标上报默认关闭，双命名实现保留，待需要时再定去留。
-- [⏸] trace 采样——保持全量采集，不加采样开关。
