@@ -71,6 +71,7 @@ DSH 运行时 ── session/created|event|disposed、llm/stream ──▶ coord
 
 - `enabled`：总开关（false 时不采集）。
 - `otel.*`：APM 端点、认证信息与 AgentArts 控制台参数；`agentarts_agentops_otel_agent_apm_enable` 控制 trace 上报。
+  `agentarts_project_id` 会作为 span 属性 `gen_ai.project.id` 上报，`agent_domain_id` 对应 `domain.id`。
 - `features.captureMessageContent`：是否采集消息内容（关闭后不上报 `gen_ai.input/output.messages`、工具参数/结果文本等）。配置脚本可直接切换：`-NoMessageContent` / `--no-message-content`（关闭）、`-CaptureMessageContent $true` / `--capture-message-content true`（开启）。关闭时 `skill` 工具仍会上报**仅含技能名**的参数，用于技能维度识别。
 - `features.debug`：开启后写 DEBUG 明细日志。
 - `features.logRetentionDays`：按天保留 `data/logs` 日志，超期自动删除（默认 14，`0` 关闭清理）。
@@ -143,7 +144,8 @@ bundle 行由 [cordis.patch.yml](cordis.patch.yml) 提供；安装后重启 DSH 
 
 ```bash
 SCRIPT=~/.dsh/profiles/<profile>/node_modules/huaweicloud-agentarts-observation-dsh-plugin/configure/dsh-agentarts-plugin.sh
-bash "$SCRIPT" --agent-id <id> --endpoint https://apm-access.<region>.myhuaweicloud.com \
+bash "$SCRIPT" --agent-id <id> --project-id <id> \
+  --endpoint https://apm-access.<region>.myhuaweicloud.com \
   --agent-name <name> --capture-message-content true
 ```
 
@@ -152,7 +154,8 @@ bash "$SCRIPT" --agent-id <id> --endpoint https://apm-access.<region>.myhuaweicl
 ```powershell
 $script = "$env:USERPROFILE\.dsh\profiles\<profile>\node_modules\huaweicloud-agentarts-observation-dsh-plugin\configure\dsh-agentarts-plugin.ps1"
 powershell -NoProfile -ExecutionPolicy Bypass -File $script `
-  -AgentId <id> -Endpoint https://apm-access.<region>.myhuaweicloud.com `
+  -AgentId <id> -ProjectId <id> `
+  -Endpoint https://apm-access.<region>.myhuaweicloud.com `
   -AgentName <name> -CaptureMessageContent true
 ```
 
