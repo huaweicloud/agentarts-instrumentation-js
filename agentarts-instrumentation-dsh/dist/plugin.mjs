@@ -41695,7 +41695,7 @@ var PLUGIN_HOME = path.join(
 var CONFIG_PATH = path.join(PLUGIN_HOME, "config.json");
 var DEFAULT_CONFIG = {
   // 基础配置
-  version: "1.0.0-rc.2",
+  version: "1.0.0-rc.3",
   enabled: true,
   agent_name: "",
   outputDir: path.join(PLUGIN_HOME, "data"),
@@ -42940,7 +42940,7 @@ var import_exporter_trace_otlp_grpc = __toESM(require_src12(), 1);
 var import_exporter_metrics_otlp_grpc = __toESM(require_src14(), 1);
 
 // src/probe-version.generated.ts
-var PROBE_VERSION = "1.0.0-rc.2";
+var PROBE_VERSION = "1.0.0-rc.3";
 
 // src/otel-reporter.ts
 var tracerProvider = null;
@@ -42998,14 +42998,26 @@ function rootSpanName() {
 }
 var DURATION_HISTOGRAM_BUCKETS = [0.01, 0.02, 0.04, 0.08, 0.16, 0.32, 0.64, 1.28, 2.56, 5.12, 10.24, 20.48, 40.96, 81.92];
 var contextManagerRegistered = false;
-function initOtel(config) {
-  if (!contextManagerRegistered) {
+function ensureContextManager() {
+  if (contextManagerRegistered) return;
+  const holder = globalThis;
+  if (holder.__agentartsDshContextManager) {
+    contextManagerRegistered = true;
+    return;
+  }
+  try {
     const ctxManager = new import_context_async_hooks.AsyncLocalStorageContextManager();
     ctxManager.enable();
     context.setGlobalContextManager(ctxManager);
-    contextManagerRegistered = true;
+    holder.__agentartsDshContextManager = true;
     log("[agentarts-dsh] AsyncLocalStorageContextManager registered");
+  } catch (error) {
+    logDebug("[agentarts-dsh] context manager already registered, reusing it:", error);
   }
+  contextManagerRegistered = true;
+}
+function initOtel(config) {
+  ensureContextManager();
   const apmEnabled = config.agentarts_agentops_otel_agent_apm_enable === true;
   const aomEnabled = config.agentarts_agentops_otel_agent_aom_enable === true;
   if (!apmEnabled && !aomEnabled) {

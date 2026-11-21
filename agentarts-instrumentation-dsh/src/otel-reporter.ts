@@ -162,14 +162,36 @@ const DURATION_HISTOGRAM_BUCKETS = [0.01, 0.02, 0.04, 0.08, 0.16, 0.32, 0.64, 1.
 
 let contextManagerRegistered = false
 
-function initOtel(config: AgentArtsOtelConfig) {
-  if (!contextManagerRegistered) {
+/**
+ * 注册全局 context manager（幂等）。
+ *
+ * 插件被热替换时，DSH 会重新求值本模块，模块级标志会重置，
+ * 于是再次调用 setGlobalContextManager 触发 OTel 的
+ * "Attempted duplicate registration of API: context" 告警。
+ * 把标志挂到 globalThis，使同一进程内的新实例能识别出已注册过。
+ */
+function ensureContextManager() {
+  if (contextManagerRegistered) return
+  const holder = globalThis as unknown as { __agentartsDshContextManager?: boolean }
+  if (holder.__agentartsDshContextManager) {
+    contextManagerRegistered = true
+    return
+  }
+  try {
     const ctxManager = new AsyncLocalStorageContextManager()
     ctxManager.enable()
     context.setGlobalContextManager(ctxManager)
-    contextManagerRegistered = true
+    holder.__agentartsDshContextManager = true
     log("[agentarts-dsh] AsyncLocalStorageContextManager registered")
+  } catch (error) {
+    // 其他插件已注册同类型 manager：复用现有的即可，不影响本插件
+    logDebug("[agentarts-dsh] context manager already registered, reusing it:", error)
   }
+  contextManagerRegistered = true
+}
+
+function initOtel(config: AgentArtsOtelConfig) {
+  ensureContextManager()
   const apmEnabled = config.agentarts_agentops_otel_agent_apm_enable === true
   const aomEnabled = config.agentarts_agentops_otel_agent_aom_enable === true
   if (!apmEnabled && !aomEnabled) {
