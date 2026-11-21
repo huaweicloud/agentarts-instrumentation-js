@@ -306,9 +306,12 @@ console.log('agent_name   : ' + dash(cfg.agent_name))
 const otel = cfg.otel
 if (otel) {
   console.log('APM (traces) : ' + onIfTrue(otel.agentarts_agentops_otel_agent_apm_enable) + '  endpoint=' + dash(otel.agentarts_agentops_apm_exporter_endpoint))
-  console.log('AOM (metrics): ' + onIfTrue(otel.agentarts_agentops_otel_agent_aom_enable) + '  endpoint=' + dash(otel.agentarts_agentops_aom_exporter_endpoint))
   console.log('token        : ' + (otel.agentarts_agentops_apm_token ? '(set, ' + String(otel.agentarts_agentops_apm_token).length + ' chars)' : '(not set)'))
-  console.log('access code  : ' + (otel.agentarts_agentops_aom_access_code ? '(set, ' + String(otel.agentarts_agentops_aom_access_code).length + ' chars)' : '(not set)'))
+  // 指标上报默认关闭：仅在开启时展示相关行，避免与默认配置产生歧义
+  if (otel.agentarts_agentops_otel_agent_aom_enable === true) {
+    console.log('AOM (metrics): on  endpoint=' + dash(otel.agentarts_agentops_aom_exporter_endpoint))
+    console.log('access code  : ' + (otel.agentarts_agentops_aom_access_code ? '(set, ' + String(otel.agentarts_agentops_aom_access_code).length + ' chars)' : '(not set)'))
+  }
 } else {
   console.log('WARN: otel section missing, nothing will be reported')
 }

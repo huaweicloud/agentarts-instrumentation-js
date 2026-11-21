@@ -3,9 +3,8 @@
 DSH（DeepSeek Harness）可观测插件：采集 DSH 运行时的 **trace**（会话/turn/step、LLM 调用、工具调用、子 agent 串联），经 OTLP gRPC 上报华为云 **AgentArts** 平台的 **APM**。
 
 > 面向最终用户的完整接入流程（获取参数 → 安装 → 配置 → 重启 → 验证 → 常见问题）见
-> [docs/接入指导.md](docs/接入指导.md)；希望让 AI 代为完成接入的，把
-> [docs/AI接入Prompt.md](docs/AI接入Prompt.md) 的指令正文整段粘贴给它即可。
-> 本文档偏工程实现与仓库说明。
+> [docs/接入指导.md](docs/接入指导.md)；其中「AI 辅助接入」章节内嵌了按操作系统区分的
+> 提示词，可整段粘贴给 AI 代为完成接入。本文档偏工程实现与仓库说明。
 
 ## 仓库结构
 

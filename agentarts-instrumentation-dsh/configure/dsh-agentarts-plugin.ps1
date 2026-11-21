@@ -295,9 +295,12 @@ function Invoke-Status {
     Write-Host ("agent_name   : {0}" -f $(if ($cfg.agent_name) { $cfg.agent_name } else { "(not set)" }))
     if ($otel) {
         Write-Host ("APM (traces) : {0}  endpoint={1}" -f $(if ($otel.agentarts_agentops_otel_agent_apm_enable -eq $true) { "on" } else { "off" }), $(if ($otel.agentarts_agentops_apm_exporter_endpoint) { $otel.agentarts_agentops_apm_exporter_endpoint } else { "(not set)" }))
-        Write-Host ("AOM (metrics): {0}  endpoint={1}" -f $(if ($otel.agentarts_agentops_otel_agent_aom_enable -eq $true) { "on" } else { "off" }), $(if ($otel.agentarts_agentops_aom_exporter_endpoint) { $otel.agentarts_agentops_aom_exporter_endpoint } else { "(not set)" }))
         Write-Host ("token        : {0}" -f $(if ($otel.agentarts_agentops_apm_token) { "(set, " + $otel.agentarts_agentops_apm_token.Length + " chars)" } else { "(not set)" }))
-        Write-Host ("access code  : {0}" -f $(if ($otel.agentarts_agentops_aom_access_code) { "(set, " + $otel.agentarts_agentops_aom_access_code.Length + " chars)" } else { "(not set)" }))
+        # 指标上报默认关闭：仅在开启时展示相关行，避免与默认配置产生歧义
+        if ($otel.agentarts_agentops_otel_agent_aom_enable -eq $true) {
+            Write-Host ("AOM (metrics): on  endpoint={0}" -f $(if ($otel.agentarts_agentops_aom_exporter_endpoint) { $otel.agentarts_agentops_aom_exporter_endpoint } else { "(not set)" }))
+            Write-Host ("access code  : {0}" -f $(if ($otel.agentarts_agentops_aom_access_code) { "(set, " + $otel.agentarts_agentops_aom_access_code.Length + " chars)" } else { "(not set)" }))
+        }
     } else {
         Write-Warn "otel section missing: nothing will be reported"
     }
