@@ -91,7 +91,7 @@ Required when config.json does not exist (merge mode keeps existing fields):
 
 Optional:
   --domain-id <id>           AgentArts tenant/domain ID
-  --project-id <id>          Huawei Cloud project ID (required for AOM)
+  --project-id <id>          Huawei Cloud project ID (written as gen_ai.project.id)
   --aom-endpoint <addr>      AOM OTLP gRPC endpoint (required for AOM)
   --aom-access-code <code>   AOM access code (required for AOM)
   --aom-prometheus-id <id>   AOM Prometheus instance ID (required for AOM)
