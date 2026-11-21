@@ -209,3 +209,14 @@ test("loadConfig(path)：带注释文件解析与默认合并", () => {
   assert.equal(config.enabled, true)
   fs.rmSync(dir, { recursive: true, force: true })
 })
+
+test("loadConfig：带 BOM 的配置仍能解析（记事本保存的常见情况）", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agentarts-bom-"))
+  const file = path.join(dir, "config.json")
+  const body = JSON.stringify({ enabled: true, otel: { agentarts_agentops_otel_agent_apm_enable: true } })
+  fs.writeFileSync(file, String.fromCharCode(0xfeff) + body, "utf8")
+  const config = loadConfig(file)
+  assert.equal(config.enabled, true)
+  assert.equal(config.otel?.agentarts_agentops_otel_agent_apm_enable, true)
+  fs.rmSync(dir, { recursive: true, force: true })
+})

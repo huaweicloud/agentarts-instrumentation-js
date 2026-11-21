@@ -201,12 +201,22 @@ function mergeConfig(userConfig: Record<string, any>) {
 }
 
 /**
+ * 去掉 UTF-8 BOM（\uFEFF）。
+ *
+ * Windows 记事本等编辑器保存 UTF-8 时会写入 BOM，而 JSON.parse 不接受它；
+ * 若不处理，整份配置会被当作解析失败并回退默认值，表现为"配置被清空"。
+ */
+function stripBom(text: string) {
+  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text
+}
+
+/**
  * 启动加载：解析失败或文件缺失时回退默认配置（保持原有行为）。
  */
 export function loadConfig(configPath = CONFIG_PATH) {
   try {
     if (fs.existsSync(configPath)) {
-      const content = fs.readFileSync(configPath, "utf-8")
+      const content = stripBom(fs.readFileSync(configPath, "utf-8"))
       const userConfig = JSON.parse(stripJsonComments(content))
       return mergeConfig(userConfig)
     }
@@ -223,7 +233,7 @@ export function loadConfig(configPath = CONFIG_PATH) {
 export function readConfigStrict(configPath = CONFIG_PATH): { config?: Record<string, any>; error?: unknown } {
   let content: string
   try {
-    content = fs.readFileSync(configPath, "utf-8")
+    content = stripBom(fs.readFileSync(configPath, "utf-8"))
   } catch (error) {
     return { error }
   }

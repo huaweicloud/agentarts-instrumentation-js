@@ -41848,10 +41848,13 @@ function mergeConfig(userConfig) {
   }
   return merged;
 }
+function stripBom(text) {
+  return text.charCodeAt(0) === 65279 ? text.slice(1) : text;
+}
 function loadConfig(configPath = CONFIG_PATH) {
   try {
     if (fs.existsSync(configPath)) {
-      const content = fs.readFileSync(configPath, "utf-8");
+      const content = stripBom(fs.readFileSync(configPath, "utf-8"));
       const userConfig = JSON.parse(stripJsonComments(content));
       return mergeConfig(userConfig);
     }
@@ -41863,7 +41866,7 @@ function loadConfig(configPath = CONFIG_PATH) {
 function readConfigStrict(configPath = CONFIG_PATH) {
   let content;
   try {
-    content = fs.readFileSync(configPath, "utf-8");
+    content = stripBom(fs.readFileSync(configPath, "utf-8"));
   } catch (error) {
     return { error };
   }
