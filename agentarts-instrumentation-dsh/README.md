@@ -182,31 +182,27 @@ bundle 行由 [cordis.patch.yml](cordis.patch.yml) 提供；安装后重启 DSH 
 
 ### 步骤二：配置接入信息
 
-`configure/` 目录下的脚本**只写配置**，不安装插件、不改动 profile。脚本可从发布地址直接下载执行：
+`configure/` 目录下的脚本**随插件一起安装**，只写配置、不安装插件、不改动 profile，
+直接使用包内脚本即可：
 
 **Linux / macOS**
 
 ```bash
-curl -fsSL <脚本下载地址>/dsh-agentarts-plugin.sh -o /tmp/dsh-agentarts-plugin.sh \
-  && bash /tmp/dsh-agentarts-plugin.sh \
-       --agent-id <id> --endpoint https://apm-access.<region>.myhuaweicloud.com \
-       --agent-name <name> --capture-message-content true
+SCRIPT=~/.dsh/profiles/<profile>/node_modules/huaweicloud-agentarts-observation-dsh-plugin/configure/dsh-agentarts-plugin.sh
+bash "$SCRIPT" --agent-id <id> --endpoint https://apm-access.<region>.myhuaweicloud.com \
+  --agent-name <name> --capture-message-content true
 ```
 
 **Windows（PowerShell）**
 
 ```powershell
-$script = Join-Path $env:TEMP "dsh-agentarts-plugin.ps1"
-Invoke-WebRequest <脚本下载地址>/dsh-agentarts-plugin.ps1 -OutFile $script
-Unblock-File $script
+$script = "$env:USERPROFILE\.dsh\profiles\<profile>\node_modules\huaweicloud-agentarts-observation-dsh-plugin\configure\dsh-agentarts-plugin.ps1"
 powershell -NoProfile -ExecutionPolicy Bypass -File $script `
   -AgentId <id> -Endpoint https://apm-access.<region>.myhuaweicloud.com `
   -AgentName <name> -CaptureMessageContent true
 ```
 
 > 凭据建议通过环境变量提供（`DSH_AGENTARTS_APM_TOKEN`），避免进入命令历史。
-> 插件安装后也可直接使用包内脚本：
-> `~/.dsh/profiles/<profile>/node_modules/huaweicloud-agentarts-observation-dsh-plugin/configure/`。
 
 也可以直接手工编辑 `~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/config.json`
 （模板见 [config.example.json](config.example.json)）。
@@ -214,13 +210,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $script `
 查看当前配置摘要（不打印凭据内容）：
 
 ```bash
-bash /tmp/dsh-agentarts-plugin.sh status
+bash "$SCRIPT" status
 ```
 
 关闭会话内容采集（敏感场景，热生效，无需重启）：
 
 ```bash
-bash /tmp/dsh-agentarts-plugin.sh --no-message-content
+bash "$SCRIPT" --no-message-content
 ```
 
 

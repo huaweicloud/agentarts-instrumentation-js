@@ -296,21 +296,24 @@ function stripComments(s) { let o = '', inStr = false, i = 0
 const raw = fs.readFileSync(configPath, 'utf8')
 let cfg
 try { cfg = JSON.parse(raw) } catch { cfg = JSON.parse(stripComments(raw)) }
-const yes = (v) => (v === false ? 'off' : 'on')
+// 上报开关：只有显式 true 才算开启（与插件 initOtel 的 === true 一致）
+const onIfTrue = (v) => (v === true ? 'on' : 'off')
+// 功能开关：默认开启，只有显式 false 才算关闭
+const offIfFalse = (v) => (v === false ? 'off' : 'on')
 const dash = (v) => (v ? v : '(not set)')
 console.log('enabled      : ' + (cfg.enabled === false ? 'false' : 'true'))
 console.log('agent_name   : ' + dash(cfg.agent_name))
 const otel = cfg.otel
 if (otel) {
-  console.log('APM (traces) : ' + yes(otel.agentarts_agentops_otel_agent_apm_enable) + '  endpoint=' + dash(otel.agentarts_agentops_apm_exporter_endpoint))
-  console.log('AOM (metrics): ' + yes(otel.agentarts_agentops_otel_agent_aom_enable) + '  endpoint=' + dash(otel.agentarts_agentops_aom_exporter_endpoint))
+  console.log('APM (traces) : ' + onIfTrue(otel.agentarts_agentops_otel_agent_apm_enable) + '  endpoint=' + dash(otel.agentarts_agentops_apm_exporter_endpoint))
+  console.log('AOM (metrics): ' + onIfTrue(otel.agentarts_agentops_otel_agent_aom_enable) + '  endpoint=' + dash(otel.agentarts_agentops_aom_exporter_endpoint))
   console.log('token        : ' + (otel.agentarts_agentops_apm_token ? '(set, ' + String(otel.agentarts_agentops_apm_token).length + ' chars)' : '(not set)'))
   console.log('access code  : ' + (otel.agentarts_agentops_aom_access_code ? '(set, ' + String(otel.agentarts_agentops_aom_access_code).length + ' chars)' : '(not set)'))
 } else {
   console.log('WARN: otel section missing, nothing will be reported')
 }
 const f = cfg.features
-if (f) console.log('content      : ' + yes(f.captureMessageContent) + '  subagent-link: ' + yes(f.linkSubagentTrace))
+if (f) console.log('content      : ' + offIfFalse(f.captureMessageContent) + '  subagent-link: ' + offIfFalse(f.linkSubagentTrace))
 console.log('')
 console.log('[agentarts-config] logs: ' + pluginHome + '/data/logs/plugin-YYYY-MM-DD.log')
 NODE_STATUS
