@@ -37,17 +37,23 @@
 | 智能体名称 | 可选 | 写入 `gen_ai.agent.name` |
 | 是否上报会话内容 | 请我选择 | `true`（默认，含消息/提示词/工具参数结果）或 `false` |
 
-同时请自行探测环境（用命令，不要问我）：
+同时请自行探测环境（用命令，不要问我）。
+
+**先读 `DSH_PROFILE`**——在 DSH 内执行命令时该变量总是存在：
 
 ```powershell
 # Windows
-Get-ChildItem "$env:USERPROFILE\.dsh\profiles" -Directory | Select-Object -ExpandProperty Name
+echo $env:DSH_PROFILE
 ```
 
 ```bash
 # Linux / macOS
-ls ~/.dsh/profiles
+echo "$DSH_PROFILE"
 ```
+
+**不要用 `ls profiles` 判定**：桌面客户端与历史 web profile 可能同时存在，会判错。
+只有 `DSH_PROFILE` 为空（即在 DSH 外执行）时，才用 `ls ~/.dsh/profiles` 兜底，
+并同时向我确认当前是桌面客户端还是 `dsh web`。
 
 判定当前形态：
 
@@ -70,13 +76,19 @@ ls ~/.dsh/profiles
 dsh plugin --profile web add "<本地产物路径或 git+https 地址>"
 ```
 
-安装后自检（必须通过再继续）：
+安装后自检（必须通过再继续）：必须确认包名出现在 `dsh.profile.bundles` 中，
+仅在 `dependencies` 里出现**不算成功**。
 
 ```powershell
-Get-Content "$env:USERPROFILE\.dsh\profiles\<profile>\package.json" | Select-String "huaweicloud"
+Get-Content "$env:USERPROFILE\.dsh\profiles\<profile>\package.json" -Raw |
+  Select-String -Pattern 'bundles' -Context 0,8
 ```
 
-应能看到包名出现在 `dsh.profile.bundles` 中。若看不到，停止并报告实际输出。
+```bash
+grep -A8 '"bundles"' ~/.dsh/profiles/<profile>/package.json
+```
+
+若看不到，停止并报告实际输出。
 
 ### 阶段 2：写配置
 
@@ -117,6 +129,8 @@ export DSH_AGENTARTS_APM_TOKEN="<APM Token>"
 - `-CaptureMessageContent` / `--capture-message-content` 取值 `true` / `false`；
   也可用 `-NoMessageContent` / `--no-message-content` 关闭内容上报。
 - **不传**这两个开关时保持配置文件现有值，不会被重置。
+- 配置文件与 profile 无关、是**全局单份**（`~/.dsh/plugins/<包名>/config.json`），
+  用临时 profile 测试**不能隔离**影响：写入后当前运行的会话会热生效（`features.*`）。
 
 配置写完后自检：
 
@@ -143,15 +157,35 @@ Windows : %USERPROFILE%\.dsh\plugins\huaweicloud-agentarts-observation-dsh-plugi
 Linux   : ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/data/logs/plugin-YYYY-MM-DD.log
 ```
 
-**成功判据（按顺序检查）**
+**先定位验证基准（避免跨夜误判）**
 
-1. 出现 `plugin loaded successfully`
-2. `config loaded` 中 `apmEnabled:true`
-3. 出现 `APM (Traces) initialized`
-4. 发起一轮真实对话后，出现 `APM (Traces) export SUCCESS`
+进程跨夜运行时，`plugin starting`、`plugin loaded successfully`、`APM (Traces) initialized`
+只写在**启动当天**的日志文件里，今天新建的文件中天然没有这些行。所以先找最近一次启动行：
 
-看到 `export failed, retrying` 后跟 `SUCCESS` 属正常重试，数据不丢；
-只有在**持续失败**时才需要报告。
+```powershell
+Get-ChildItem "$env:USERPROFILE\.dsh\plugins\huaweicloud-agentarts-observation-dsh-plugin\data\logs\plugin-*.log" |
+  Select-String -Pattern 'plugin starting' | Select-Object -Last 1
+```
+
+```bash
+grep -H "plugin starting" ~/.dsh/plugins/huaweicloud-agentarts-observation-dsh-plugin/data/logs/plugin-*.log | tail -1
+```
+
+用命中的**文件 + 时间戳**作为基准，不要假设一定在今天的文件里。
+
+**成功判据（按顺序、且都在基准之后）**
+
+1. `plugin loaded successfully`
+2. `config loaded` 中 `"apmEnabled":true`
+3. `APM (Traces) initialized`
+4. 发起一轮真实对话后，出现 `APM (Traces) export SUCCESS`，并记录**发生时间与 spanCount**
+
+注意：
+
+- 只统计**重启时点之后**的 `export SUCCESS`；重启前的历史条目不算本次验证。
+- 若 0 命中，不要直接判失败：先确认是否真的重启过、是否读错了日志文件。
+- 看到 `export failed, retrying` 后跟 `SUCCESS` 属正常重试，数据不丢；
+  只有在**持续失败**时才需要报告。
 
 ### 阶段 5：失败排查顺序
 
