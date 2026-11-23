@@ -26,7 +26,6 @@ export interface AgentArtsOtelConfig {
   agent_domain_id?: string
   agentarts_project_id?: string
   agent_resource_id?: string
-  resource_version?: string
   agentarts_agentops_apm_token?: string
   agentarts_agentops_apm_exporter_endpoint?: string
   agentarts_agentops_aom_access_code?: string

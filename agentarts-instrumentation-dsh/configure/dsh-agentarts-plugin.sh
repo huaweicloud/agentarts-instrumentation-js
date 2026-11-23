@@ -249,7 +249,7 @@ const config = existed ? readExisting(configPath) : {}
 deepMerge(config, updates)
 if (!existed) {
   const defaults = {
-    version: '1.0.0', enabled: true,
+    enabled: true,
     outputDir: path.join(os.homedir(), '.dsh', 'plugins', 'agentarts-instrumentation-dsh', 'data').replaceAll('\\\\', '/'),
     agent_name: '', 'user.id': '',
     features: { debug: false, captureMessageContent: true, linkSubagentTrace: true, logRetentionDays: 14 },

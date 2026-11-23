@@ -810,7 +810,7 @@ export class DshTraceCoordinator {
       "gen_ai.agent.name": this.config.agent_name || "deepseek-harness",
       "domain.id": otel?.agent_domain_id ?? "",
       "gen_ai.resource.id": otel?.agent_resource_id ?? "",
-      // 资源类型固定为 agent；资源版本取运行中的 DSH 版本（不再从配置读取）
+      // 资源类型固定为 deepseekharness；资源版本取运行中的 DSH 版本（不再从配置读取）
       "gen_ai.resource.type": RESOURCE_TYPE,
       "gen_ai.project.id": otel?.agentarts_project_id ?? "",
       "resource_version": detectDshVersion(),
