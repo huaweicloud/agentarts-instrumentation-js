@@ -41749,7 +41749,7 @@ var OTel_BOOLEAN_KEYS = [
   "agentarts_agentops_otel_agent_apm_enable",
   "agentarts_agentops_otel_agent_aom_enable"
 ];
-var RESOURCE_TYPE = "agent";
+var RESOURCE_TYPE = "deepseekharness";
 var cachedDshVersion = null;
 function detectDshVersion() {
   if (cachedDshVersion !== null) return cachedDshVersion;
@@ -42009,7 +42009,7 @@ function validateConfig(config) {
     if (otel[key] !== void 0) {
       issues.push({
         field: `otel.${key}`,
-        message: "ignored: resource type is fixed to 'agent' and resource version uses the running DSH version; you can remove this key"
+        message: "ignored: resource type is fixed to 'deepseekharness' and resource version uses the running DSH version; you can remove this key"
       });
     }
   }
@@ -43045,7 +43045,7 @@ function initOtel(config) {
     aomEndpoint: config.agentarts_agentops_aom_exporter_endpoint,
     domainId: config.agent_domain_id,
     resourceId: config.agent_resource_id,
-    resourceType: config.resource_type,
+    resourceType: RESOURCE_TYPE,
     projectId: config.agentarts_project_id,
     promId: config.agentarts_agentops_aom_prometheus_id
   });
@@ -43053,7 +43053,7 @@ function initOtel(config) {
     "service.name": "AgentArts.default.default",
     "domain.id": config.agent_domain_id,
     "gen_ai.resource.id": config.agent_resource_id,
-    "gen_ai.resource.type": config.resource_type
+    "gen_ai.resource.type": RESOURCE_TYPE
   });
   if (apmEnabled) {
     try {

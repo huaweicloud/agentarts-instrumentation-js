@@ -11,8 +11,7 @@ test("beginRootSpan：无父时新建 root span；有父时沿用父 traceId", a
     agentarts_agentops_apm_token: "t",
     agentarts_agentops_apm_exporter_endpoint: "http://127.0.0.1:14317",
     agent_domain_id: "d",
-    agent_resource_id: "r",
-    resource_type: "agent"
+    agent_resource_id: "r"
   })
 
   const root = beginRootSpan(Date.now(), undefined, "parent-agent")

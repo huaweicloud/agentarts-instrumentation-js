@@ -51,7 +51,7 @@ test("buildCommonSpanAttrs：保留的公共属性不受影响", () => {
     ...baseEvent,
     "domain.id": "d1",
     "gen_ai.resource.id": "r1",
-    "gen_ai.resource.type": "agent",
+    "gen_ai.resource.type": "deepseekharness",
     "gen_ai.project.id": "p1",
     "resource_version": "1.0.0"
   })
@@ -59,7 +59,7 @@ test("buildCommonSpanAttrs：保留的公共属性不受影响", () => {
   assert.equal(attrs["gen_ai.user.id"], "u1")
   assert.equal(attrs["domain.id"], "d1")
   assert.equal(attrs["gen_ai.resource.id"], "r1")
-  assert.equal(attrs["gen_ai.resource.type"], "agent")
+  assert.equal(attrs["gen_ai.resource.type"], "deepseekharness")
   assert.equal(attrs["gen_ai.project.id"], "p1")
   assert.equal(attrs["resource_version"], "1.0.0")
   assert.equal(attrs["probe_version"], PROBE_VERSION)

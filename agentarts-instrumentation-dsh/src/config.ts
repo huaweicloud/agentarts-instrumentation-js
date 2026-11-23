@@ -74,8 +74,8 @@ const OTel_BOOLEAN_KEYS = [
   "agentarts_agentops_otel_agent_aom_enable"
 ] as const
 
-// 资源类型固定上报为 agent；资源版本取运行中的 DSH 版本（见 detectDshVersion）
-export const RESOURCE_TYPE = "agent"
+// 资源类型固定上报为 deepseekharness；资源版本取运行中的 DSH 版本（见 detectDshVersion）
+export const RESOURCE_TYPE = "deepseekharness"
 
 /**
  * 探测运行中的 DSH 版本，用于 resource_version。
@@ -406,7 +406,7 @@ export function validateConfig(config: Record<string, any>): ConfigIssue[] {
     if (otel[key] !== undefined) {
       issues.push({
         field: `otel.${key}`,
-        message: "ignored: resource type is fixed to 'agent' and resource version uses the running DSH version; you can remove this key"
+        message: "ignored: resource type is fixed to 'deepseekharness' and resource version uses the running DSH version; you can remove this key"
       })
     }
   }

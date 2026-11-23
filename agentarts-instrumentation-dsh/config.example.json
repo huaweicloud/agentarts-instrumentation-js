@@ -36,7 +36,7 @@
     "agent_domain_id": "", // 租户/域 ID（domain.id）
     "agentarts_project_id": "", // 项目 ID（projectid 元数据）
     "agent_resource_id": "", // Agent 资源 ID（gen_ai.resource.id）
-    // 资源类型固定上报为 agent，资源版本自动取运行中的 DSH 版本，
+    // 资源类型固定上报为 deepseekharness，资源版本自动取运行中的 DSH 版本，
     // 因此这里不再提供 resource_type / resource_version 配置项。
     // ── APM（trace）OTLP gRPC ──
     "agentarts_agentops_apm_token": "", // APM 认证 token（gRPC metadata: authentication）
