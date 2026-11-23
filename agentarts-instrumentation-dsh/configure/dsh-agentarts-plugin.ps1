@@ -371,5 +371,10 @@ switch ($Command) {
     'configure' { if ($Help) { Show-Help; exit 0 }; Invoke-Configure }
     'status'    { if ($Help) { Show-Help; exit 0 }; Invoke-Status }
     'help'      { Show-Help; exit 0 }
-    default     { Write-Err "unknown subcommand: $Command (expected configure | status | help)"; Show-Help; exit 1 }
+        default     {
+        Write-Err "unknown subcommand: $Command (expected configure | status | help)"
+        Write-Warn "if a parameter value contains spaces, wrap it in quotes, e.g. -AgentName ""my agent name"""
+        Show-Help
+        exit 1
+    }
 }

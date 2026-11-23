@@ -146,7 +146,7 @@ bundle 行由 [cordis.patch.yml](cordis.patch.yml) 提供；安装后重启 DSH 
 SCRIPT=~/.dsh/profiles/<profile>/node_modules/agentarts-instrumentation-dsh/configure/dsh-agentarts-plugin.sh
 bash "$SCRIPT" --agent-id <id> --domain-id <id> --project-id <id> \
   --endpoint https://apm-access.<region>.myhuaweicloud.com \
-  --agent-name <agent-name> --capture-message-content true
+  --agent-name "<agent-name>" --capture-message-content true
 ```
 
 **Windows（PowerShell）**
@@ -156,7 +156,7 @@ $script = "$env:USERPROFILE\.dsh\profiles\<profile>\node_modules\agentarts-instr
 powershell -NoProfile -ExecutionPolicy Bypass -File $script `
   -AgentId <id> -DomainId <id> -ProjectId <id> `
   -Endpoint https://apm-access.<region>.myhuaweicloud.com `
-  -AgentName <agent-name> -CaptureMessageContent true
+  -AgentName "<agent-name>" -CaptureMessageContent true
 ```
 
 > 凭据建议通过环境变量提供（`DSH_AGENTARTS_APM_TOKEN`），避免进入命令历史。

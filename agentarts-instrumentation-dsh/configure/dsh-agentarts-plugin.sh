@@ -131,7 +131,12 @@ while [ $# -gt 0 ]; do
         --capture-message-content) CAPTURE_MESSAGE_CONTENT="${2:-}"; shift 2 ;;
         --no-message-content)  CAPTURE_MESSAGE_CONTENT="false"; shift ;;
         -h|--help)             usage; exit 0 ;;
-        *) err "unknown option: $1"; usage >&2; exit 1 ;;
+        *)
+            err "unknown option: $1"
+            err "if a parameter value contains spaces, wrap it in quotes, e.g. --agent-name \"my agent name\""
+            usage >&2
+            exit 1
+            ;;
     esac
 done
 
@@ -327,5 +332,10 @@ case "$SUBCOMMAND" in
     configure) cmd_configure ;;
     status)    cmd_status ;;
     help)      usage; exit 0 ;;
-    *)         err "unknown subcommand: $SUBCOMMAND (expected configure | status | help)"; usage >&2; exit 1 ;;
+    *)
+         err "unknown subcommand: $SUBCOMMAND (expected configure | status | help)"
+         err "if a parameter value contains spaces, wrap it in quotes, e.g. --agent-name \"my agent name\""
+         usage >&2
+         exit 1
+         ;;
 esac
