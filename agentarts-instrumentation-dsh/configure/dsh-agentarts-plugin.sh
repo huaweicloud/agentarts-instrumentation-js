@@ -45,7 +45,7 @@ fi
 
 AGENT_ID=""
 AGENT_NAME=""
-# 资源类型：agent（旧）/ deepseekharness（默认）/ multiagents / workflow
+# 资源类型：agent（默认）/ deepseekharness / multiagents / workflow
 RESOURCE_TYPE=""
 DOMAIN_ID=""
 PROJECT_ID=""
@@ -98,7 +98,7 @@ Optional:
   --aom-access-code <code>   AOM access code (required for AOM)
   --aom-prometheus-id <id>   AOM Prometheus instance ID (required for AOM)
   --agent-name <name>        Agent name (gen_ai.agent.name)
-  --resource-type <type>     agent (old) | deepseekharness (default) | multiagents | workflow
+  --resource-type <type>     agent (default) | deepseekharness | multiagents | workflow
   --user-id <id>
   --link-subagent-trace <true|false>      Link subagent traces to the parent trace
   --capture-message-content <true|false>  Report conversation content (messages,
@@ -259,7 +259,7 @@ if (!existed) {
     agent_name: '', 'user.id': '',
     features: { debug: false, captureMessageContent: true, linkSubagentTrace: true, logRetentionDays: 14 },
     otel: { agentarts_agentops_otel_agent_apm_enable: true, agentarts_agentops_otel_agent_aom_enable: false,
-      agent_domain_id: '', agentarts_project_id: '', agent_resource_id: '', resource_type: 'deepseekharness',
+      agent_domain_id: '', agentarts_project_id: '', agent_resource_id: '', resource_type: 'agent',
       agentarts_agentops_apm_token: '', agentarts_agentops_apm_exporter_endpoint: '',
       agentarts_agentops_aom_access_code: '', agentarts_agentops_aom_exporter_endpoint: '', agentarts_agentops_aom_prometheus_id: '' }
   }

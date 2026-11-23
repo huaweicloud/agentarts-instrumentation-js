@@ -41748,7 +41748,7 @@ var OTel_BOOLEAN_KEYS = [
   "agentarts_agentops_otel_agent_apm_enable",
   "agentarts_agentops_otel_agent_aom_enable"
 ];
-var DEFAULT_RESOURCE_TYPE = "deepseekharness";
+var DEFAULT_RESOURCE_TYPE = "agent";
 var KNOWN_RESOURCE_TYPES = ["agent", "deepseekharness", "multiagents", "workflow"];
 var cachedDshVersion = null;
 function detectDshVersion() {

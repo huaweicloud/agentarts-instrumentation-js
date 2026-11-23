@@ -73,9 +73,9 @@ const OTel_BOOLEAN_KEYS = [
   "agentarts_agentops_otel_agent_aom_enable"
 ] as const
 
-// 资源类型默认 deepseekharness，可在配置中通过 otel.resource_type 覆盖。
-// 旧平台/旧智能体认 agent，新版本用 deepseekharness —— 便于新旧版本共存。
-export const DEFAULT_RESOURCE_TYPE = "deepseekharness"
+// 资源类型默认 agent（平台通用取值），可在配置中通过 otel.resource_type 覆盖；
+// 需要标识新产品时填 deepseekharness —— 便于新旧版本共存。
+export const DEFAULT_RESOURCE_TYPE = "agent"
 /** 平台已知的资源类型取值（其余取值会给出告警，但不阻止运行） */
 export const KNOWN_RESOURCE_TYPES = ["agent", "deepseekharness", "multiagents", "workflow"] as const
 
@@ -402,7 +402,7 @@ export function validateConfig(config: Record<string, any>): ConfigIssue[] {
       })
     }
   }
-  // 已废弃的键：资源类型固定为 deepseekharness、资源版本取运行中的 DSH 版本，
+  // 已废弃的键：资源类型改由配置提供、资源版本取运行中的 DSH 版本，
   // 配置里写了也不会生效，提示用户删除
   for (const key of DEPRECATED_OTEL_KEYS) {
     if (otel[key] !== undefined) {

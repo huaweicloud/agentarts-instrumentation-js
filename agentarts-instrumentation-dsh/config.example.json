@@ -36,9 +36,8 @@
     "agent_domain_id": "", // 租户/域 ID（domain.id）
     "agentarts_project_id": "", // 项目 ID（projectid 元数据）
     "agent_resource_id": "", // Agent 资源 ID（gen_ai.resource.id）
-    // 资源类型：旧版本平台/智能体认 "agent"，新版本用 "deepseekharness"，
-    // 可按需切换以兼容新旧环境；留空则使用默认值 deepseekharness。
-    "resource_type": "deepseekharness",
+    // 资源类型：默认 "agent"（平台通用取值）；需要标识新产品时可填 "deepseekharness"。
+    "resource_type": "agent",
     // 资源版本不在此配置：统一取运行中的 DSH 版本。
     // ── APM（trace）OTLP gRPC ──
     "agentarts_agentops_apm_token": "", // APM 认证 token（gRPC metadata: authentication）
