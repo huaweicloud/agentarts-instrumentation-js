@@ -55,9 +55,8 @@ export const KNOWN_OTEL_KEYS = [
   "agent_domain_id",
   "agentarts_project_id",
   "agent_resource_id",
-  // 已废弃：资源类型固定为 deepseekharness、资源版本取运行中的 DSH 版本，
-  // 这两个键仅为兼容旧配置而保留识别（出现时提示可删除）
   "resource_type",
+  // 已废弃：资源版本改由运行中的 DSH 版本提供，此键仅为兼容旧配置而保留识别
   "resource_version",
   "agentarts_agentops_apm_token",
   "agentarts_agentops_apm_exporter_endpoint",
@@ -67,15 +66,18 @@ export const KNOWN_OTEL_KEYS = [
 ] as const
 
 /** 已废弃的配置键：识别但忽略，出现时给出可删除的提示 */
-const DEPRECATED_OTEL_KEYS = ["resource_type", "resource_version"] as const
+const DEPRECATED_OTEL_KEYS = ["resource_version"] as const
 
 const OTel_BOOLEAN_KEYS = [
   "agentarts_agentops_otel_agent_apm_enable",
   "agentarts_agentops_otel_agent_aom_enable"
 ] as const
 
-// 资源类型固定上报为 deepseekharness；资源版本取运行中的 DSH 版本（见 detectDshVersion）
-export const RESOURCE_TYPE = "deepseekharness"
+// 资源类型默认 deepseekharness，可在配置中通过 otel.resource_type 覆盖。
+// 旧平台/旧智能体认 agent，新版本用 deepseekharness —— 便于新旧版本共存。
+export const DEFAULT_RESOURCE_TYPE = "deepseekharness"
+/** 平台已知的资源类型取值（其余取值会给出告警，但不阻止运行） */
+export const KNOWN_RESOURCE_TYPES = ["agent", "deepseekharness", "multiagents", "workflow"] as const
 
 /**
  * 探测运行中的 DSH 版本，用于 resource_version。
@@ -406,9 +408,20 @@ export function validateConfig(config: Record<string, any>): ConfigIssue[] {
     if (otel[key] !== undefined) {
       issues.push({
         field: `otel.${key}`,
-        message: "ignored: resource type is fixed to 'deepseekharness' and resource version uses the running DSH version; you can remove this key"
+        message: "ignored: resource version uses the running DSH version; you can remove this key"
       })
     }
+  }
+  // 资源类型：可配置（新旧平台取值不同），只对未知取值告警
+  if (typeof otel.resource_type === "string" && otel.resource_type !== "") {
+    if (!(KNOWN_RESOURCE_TYPES as readonly string[]).includes(otel.resource_type)) {
+      issues.push({
+        field: "otel.resource_type",
+        message: `unknown resource type "${otel.resource_type}"; known: ${KNOWN_RESOURCE_TYPES.join(" | ")}`
+      })
+    }
+  } else if (otel.resource_type !== undefined) {
+    issues.push({ field: "otel.resource_type", message: "empty: falling back to the default resource type" })
   }
   for (const key of ["agent_domain_id", "agentarts_project_id", "agent_resource_id"]) {
     if (otel[key] !== undefined && !otel[key]) {

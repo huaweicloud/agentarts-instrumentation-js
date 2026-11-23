@@ -14,7 +14,7 @@ import {
   llmRequestAttributes
 } from "./mapping.js"
 import { logDebug, logError } from "./logger.js"
-import { detectDshVersion, RESOURCE_TYPE } from "./config.js"
+import { DEFAULT_RESOURCE_TYPE, detectDshVersion } from "./config.js"
 import type { Span } from "@opentelemetry/api"
 
 export interface RootSpanContext {
@@ -129,6 +129,7 @@ export interface CoordinatorConfig {
     agent_domain_id?: string
     agentarts_project_id?: string
     agent_resource_id?: string
+    resource_type?: string
   }
 }
 
@@ -810,8 +811,9 @@ export class DshTraceCoordinator {
       "gen_ai.agent.name": this.config.agent_name || "deepseek-harness",
       "domain.id": otel?.agent_domain_id ?? "",
       "gen_ai.resource.id": otel?.agent_resource_id ?? "",
-      // 资源类型固定为 deepseekharness；资源版本取运行中的 DSH 版本（不再从配置读取）
-      "gen_ai.resource.type": RESOURCE_TYPE,
+      // 资源类型可配置（otel.resource_type），未配置时用默认值；
+      // 资源版本统一取运行中的 DSH 版本
+      "gen_ai.resource.type": otel?.resource_type || DEFAULT_RESOURCE_TYPE,
       "gen_ai.project.id": otel?.agentarts_project_id ?? "",
       "resource_version": detectDshVersion(),
       "gen_ai.call.status": true,

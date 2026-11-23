@@ -45,6 +45,8 @@ fi
 
 AGENT_ID=""
 AGENT_NAME=""
+# 资源类型：agent（旧）/ deepseekharness（默认）/ multiagents / workflow
+RESOURCE_TYPE=""
 DOMAIN_ID=""
 PROJECT_ID=""
 USER_ID=""
@@ -96,6 +98,7 @@ Optional:
   --aom-access-code <code>   AOM access code (required for AOM)
   --aom-prometheus-id <id>   AOM Prometheus instance ID (required for AOM)
   --agent-name <name>        Agent name (gen_ai.agent.name)
+  --resource-type <type>     agent (old) | deepseekharness (default) | multiagents | workflow
   --user-id <id>
   --link-subagent-trace <true|false>      Link subagent traces to the parent trace
   --capture-message-content <true|false>  Report conversation content (messages,
@@ -118,6 +121,7 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --agent-id)            AGENT_ID="${2:-}"; shift 2 ;;
         --agent-name)          AGENT_NAME="${2:-}"; shift 2 ;;
+        --resource-type)       RESOURCE_TYPE="${2:-}"; shift 2 ;;
         --domain-id)           DOMAIN_ID="${2:-}"; shift 2 ;;
         --project-id)          PROJECT_ID="${2:-}"; shift 2 ;;
 
@@ -192,7 +196,7 @@ cmd_configure() {
     updates_file="$(mktemp)"
     # 该临时文件含明文凭据：即使后续失败退出也要删除
     trap 'rm -f "$updates_file"' EXIT
-    AGENT_ID="$AGENT_ID" AGENT_NAME="$AGENT_NAME" LINK_SUBAGENT_TRACE="$LINK_SUBAGENT_TRACE" CAPTURE_MESSAGE_CONTENT="$CAPTURE_MESSAGE_CONTENT" DOMAIN_ID="$DOMAIN_ID" PROJECT_ID="$PROJECT_ID" \
+    AGENT_ID="$AGENT_ID" AGENT_NAME="$AGENT_NAME" RESOURCE_TYPE="$RESOURCE_TYPE" LINK_SUBAGENT_TRACE="$LINK_SUBAGENT_TRACE" CAPTURE_MESSAGE_CONTENT="$CAPTURE_MESSAGE_CONTENT" DOMAIN_ID="$DOMAIN_ID" PROJECT_ID="$PROJECT_ID" \
     TOKEN="$TOKEN" ENDPOINT="$ENDPOINT" AOM_ACCESS_CODE="$AOM_ACCESS_CODE" \
     AOM_ENDPOINT="$AOM_ENDPOINT" AOM_PROMETHEUS_ID="$AOM_PROMETHEUS_ID" \
     USER_ID="$USER_ID" node --input-type=commonjs - "$updates_file" <<'EOF'
@@ -201,6 +205,7 @@ const v = {
     agent_resource_id: process.env.AGENT_ID,
     agent_domain_id: process.env.DOMAIN_ID,
     agentarts_project_id: process.env.PROJECT_ID,
+    resource_type: process.env.RESOURCE_TYPE,
     agentarts_agentops_apm_token: process.env.TOKEN,
     agentarts_agentops_apm_exporter_endpoint: process.env.ENDPOINT,
     agentarts_agentops_aom_access_code: process.env.AOM_ACCESS_CODE,
@@ -254,7 +259,7 @@ if (!existed) {
     agent_name: '', 'user.id': '',
     features: { debug: false, captureMessageContent: true, linkSubagentTrace: true, logRetentionDays: 14 },
     otel: { agentarts_agentops_otel_agent_apm_enable: true, agentarts_agentops_otel_agent_aom_enable: false,
-      agent_domain_id: '', agentarts_project_id: '', agent_resource_id: '',
+      agent_domain_id: '', agentarts_project_id: '', agent_resource_id: '', resource_type: 'deepseekharness',
       agentarts_agentops_apm_token: '', agentarts_agentops_apm_exporter_endpoint: '',
       agentarts_agentops_aom_access_code: '', agentarts_agentops_aom_exporter_endpoint: '', agentarts_agentops_aom_prometheus_id: '' }
   }

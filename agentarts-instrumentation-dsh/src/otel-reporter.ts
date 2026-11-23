@@ -16,7 +16,7 @@ import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc"
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-grpc"
 import { log, logError, logDebug, isDebugEnabled } from "./logger.js"
 import { PROBE_VERSION } from "./probe-version.generated.js"
-import { detectDshVersion, RESOURCE_TYPE } from "./config.js"
+import { DEFAULT_RESOURCE_TYPE, detectDshVersion } from "./config.js"
 import type { RootSpanContext, RootSpanHandle, TurnEventRecord } from "./coordinator.js"
 
 /** AgentArts APM/AOM 上报配置（config.json 的 otel 节点） */
@@ -26,6 +26,7 @@ export interface AgentArtsOtelConfig {
   agent_domain_id?: string
   agentarts_project_id?: string
   agent_resource_id?: string
+  resource_type?: string
   agentarts_agentops_apm_token?: string
   agentarts_agentops_apm_exporter_endpoint?: string
   agentarts_agentops_aom_access_code?: string
@@ -214,7 +215,7 @@ function initOtel(config: AgentArtsOtelConfig) {
     aomEndpoint: config.agentarts_agentops_aom_exporter_endpoint,
     domainId: config.agent_domain_id,
     resourceId: config.agent_resource_id,
-    resourceType: RESOURCE_TYPE,
+    resourceType: config.resource_type || DEFAULT_RESOURCE_TYPE,
     projectId: config.agentarts_project_id,
     promId: config.agentarts_agentops_aom_prometheus_id
   })
@@ -222,7 +223,7 @@ function initOtel(config: AgentArtsOtelConfig) {
     "service.name": "AgentArts.default.default",
     "domain.id": config.agent_domain_id,
     "gen_ai.resource.id": config.agent_resource_id,
-    "gen_ai.resource.type": RESOURCE_TYPE,
+    "gen_ai.resource.type": config.resource_type || DEFAULT_RESOURCE_TYPE,
     // 与 span 属性保持一致：项目 ID 与资源版本也要在 Resource 上可见，
     // 便于平台按资源维度聚合/筛选
     "gen_ai.project.id": config.agentarts_project_id,

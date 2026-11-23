@@ -40,6 +40,8 @@ param(
     [string]$DomainId,
     [string]$ProjectId,
     [string]$AgentName,
+    # 资源类型：agent（旧）/ deepseekharness（新）/ multiagents / workflow
+    [string]$ResourceType,
     [string]$UserId,
     [string]$Endpoint,
     [string]$Token,
@@ -107,7 +109,7 @@ if (!existed) {
     agent_name: '', 'user.id': '',
     features: { debug: false, captureMessageContent: true, linkSubagentTrace: true, logRetentionDays: 14 },
     otel: { agentarts_agentops_otel_agent_apm_enable: true, agentarts_agentops_otel_agent_aom_enable: false,
-      agent_domain_id: '', agentarts_project_id: '', agent_resource_id: '',
+      agent_domain_id: '', agentarts_project_id: '', agent_resource_id: '', resource_type: 'deepseekharness',
       agentarts_agentops_apm_token: '', agentarts_agentops_apm_exporter_endpoint: '',
       agentarts_agentops_aom_access_code: '', agentarts_agentops_aom_exporter_endpoint: '', agentarts_agentops_aom_prometheus_id: '' }
   }
@@ -204,7 +206,8 @@ function Write-PluginConfig {
     $otel = [ordered]@{}
     foreach ($pair in @(
         @{ p = "AgentId"; k = "agent_resource_id" }, @{ p = "DomainId"; k = "agent_domain_id" },
-        @{ p = "ProjectId"; k = "agentarts_project_id" }, @{ p = "Token"; k = "agentarts_agentops_apm_token" },
+        @{ p = "ProjectId"; k = "agentarts_project_id" }, @{ p = "ResourceType"; k = "resource_type" },
+        @{ p = "Token"; k = "agentarts_agentops_apm_token" },
         @{ p = "AomAccessCode"; k = "agentarts_agentops_aom_access_code" },
         @{ p = "AomPrometheusId"; k = "agentarts_agentops_aom_prometheus_id" }
     )) {
@@ -347,6 +350,8 @@ Optional:
   -AomAccessCode <code>  AOM access code (required for AOM)
   -AomPrometheusId <id>  AOM Prometheus instance ID (required for AOM)
   -AgentName <name>      Agent name (gen_ai.agent.name)
+  -ResourceType <type>   Resource type: agent (old) | deepseekharness (default) |
+                         multiagents | workflow
   -UserId <id>                    User identifier (user.id; hostname when empty)
   -LinkSubagentTrace <true|false>       Link subagent traces to the parent trace
   -CaptureMessageContent <true|false>   Report conversation content: messages, system

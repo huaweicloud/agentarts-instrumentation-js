@@ -125,29 +125,40 @@ test("validateConfig：features 类型与取值检查", () => {
   assert.equal(issues.some((i) => i.field === "features.logRetentionDayss" && /did you mean "logRetentionDays"/.test(i.message)), true)
 })
 
-test("validateConfig：废弃的 resource_type / resource_version 被忽略并提示", () => {
-  const config = validConfig()
-  config.otel.resource_type = "workflow"
-  config.otel.resource_version = "9.9.9"
-  config.otel.agent_domain_id = ""
-  const issues = validateConfig(config)
-
-  // 两个键仍被识别（不与未知键混为一谈），但提示已被忽略
-  for (const key of ["resource_type", "resource_version"]) {
-    const issue = issues.find((i) => i.field === `otel.${key}`)
-    assert.ok(issue, `${key} 应给出提示`)
-    assert.match(issue!.message, /ignored/)
+test("validateConfig：resource_type 可配置，已知取值不告警", () => {
+  for (const value of ["agent", "deepseekharness", "multiagents", "workflow"]) {
+    const config = validConfig()
+    config.otel.resource_type = value
+    const issues = validateConfig(config)
+    assert.equal(
+      issues.some((i) => i.field === "otel.resource_type"),
+      false,
+      `${value} 是已知取值，不应告警`
+    )
   }
-  // 与其他校验互不影响
-  assert.equal(issues.some((i) => i.field === "otel.agent_domain_id" && /blank/.test(i.message)), true)
 })
 
-test("validateConfig：资源类型一定是 agent、资源版本来自 DSH（不再读配置）", () => {
+test("validateConfig：resource_type 未知取值给出告警但不阻止运行", () => {
   const config = validConfig()
-  config.otel.resource_type = "workflow"
+  config.otel.resource_type = "foo"
   const issues = validateConfig(config)
-  const unknown = issues.find((i) => /unknown config key/.test(i.message) && i.field.includes("resource_type"))
-  assert.equal(unknown, undefined, "不应被当成未知键")
+  const issue = issues.find((i) => i.field === "otel.resource_type")
+  assert.ok(issue, "未知取值应告警")
+  assert.match(issue!.message, /known:/)
+})
+
+test("validateConfig：resource_version 仍是废弃键并提示忽略", () => {
+  const config = validConfig()
+  config.otel.resource_version = "9.9.9"
+  const issues = validateConfig(config)
+  const issue = issues.find((i) => i.field === "otel.resource_version")
+  assert.ok(issue, "resource_version 应提示已废弃")
+  assert.match(issue!.message, /ignored/)
+  // 不应被当成未知键
+  assert.equal(
+    issues.some((i) => /unknown config key/.test(i.message) && i.field.includes("resource_version")),
+    false
+  )
 })
 
 test("nearestKey：短键距离 1、长键距离 2 内给出建议，否则不给", () => {
