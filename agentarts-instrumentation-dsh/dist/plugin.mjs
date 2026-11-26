@@ -41848,6 +41848,60 @@ function mergeConfig(userConfig) {
   }
   return merged;
 }
+function deepMerge(base, patch) {
+  const out = { ...base };
+  for (const [key, value] of Object.entries(patch)) {
+    const current = out[key];
+    const bothObjects = value !== null && typeof value === "object" && !Array.isArray(value) && current !== null && typeof current === "object" && !Array.isArray(current);
+    out[key] = bothObjects ? deepMerge(current, value) : value;
+  }
+  return out;
+}
+function envConfigOverrides() {
+  const raw = process.env.DSH_AGENTARTS_CONFIG;
+  if (!raw || raw.trim() === "") return void 0;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      console.warn("[agentarts-dsh] DSH_AGENTARTS_CONFIG must be a JSON object, ignored");
+      return void 0;
+    }
+    return parsed;
+  } catch (error) {
+    console.warn("[agentarts-dsh] DSH_AGENTARTS_CONFIG is not valid JSON, ignored:", error);
+    return void 0;
+  }
+}
+var ENV_PLACEHOLDER = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
+function expandEnvPlaceholders(value, missing = /* @__PURE__ */ new Set()) {
+  if (typeof value === "string") {
+    return value.replace(ENV_PLACEHOLDER, (whole, name) => {
+      const env = process.env[name];
+      if (env === void 0) {
+        missing.add(name);
+        return whole;
+      }
+      return env;
+    });
+  }
+  if (Array.isArray(value)) return value.map((entry) => expandEnvPlaceholders(entry, missing));
+  if (value !== null && typeof value === "object") {
+    const out = {};
+    for (const [key, entry] of Object.entries(value)) out[key] = expandEnvPlaceholders(entry, missing);
+    return out;
+  }
+  return value;
+}
+function applyEnvLayer(config) {
+  const overrides = envConfigOverrides();
+  const merged = overrides ? deepMerge(config, overrides) : config;
+  const missing = /* @__PURE__ */ new Set();
+  const expanded = expandEnvPlaceholders(merged, missing);
+  if (missing.size > 0) {
+    console.warn(`[agentarts-dsh] undefined env placeholder(s) kept as-is: ${[...missing].join(", ")}`);
+  }
+  return expanded;
+}
 function stripBom(text) {
   return text.charCodeAt(0) === 65279 ? text.slice(1) : text;
 }
@@ -41856,12 +41910,12 @@ function loadConfig(configPath = CONFIG_PATH) {
     if (fs.existsSync(configPath)) {
       const content = stripBom(fs.readFileSync(configPath, "utf-8"));
       const userConfig = JSON.parse(stripJsonComments(content));
-      return mergeConfig(userConfig);
+      return applyEnvLayer(mergeConfig(userConfig));
     }
   } catch (error) {
     console.warn("[agentarts-dsh] Failed to load config, using defaults:", error);
   }
-  return DEFAULT_CONFIG;
+  return applyEnvLayer(DEFAULT_CONFIG);
 }
 function readConfigStrict(configPath = CONFIG_PATH) {
   let content;
@@ -41871,7 +41925,7 @@ function readConfigStrict(configPath = CONFIG_PATH) {
     return { error };
   }
   try {
-    return { config: mergeConfig(JSON.parse(stripJsonComments(content))) };
+    return { config: applyEnvLayer(mergeConfig(JSON.parse(stripJsonComments(content)))) };
   } catch (error) {
     return { error };
   }

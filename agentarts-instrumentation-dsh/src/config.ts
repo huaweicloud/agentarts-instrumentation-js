@@ -202,6 +202,80 @@ function mergeConfig(userConfig: Record<string, any>) {
   return merged
 }
 
+/** 深合并：对象递归合并，数组与标量整体覆盖 */
+function deepMerge<T extends Record<string, any>>(base: T, patch: Record<string, any>): T {
+  const out: Record<string, any> = { ...base }
+  for (const [key, value] of Object.entries(patch)) {
+    const current = out[key]
+    const bothObjects =
+      value !== null && typeof value === "object" && !Array.isArray(value) &&
+      current !== null && typeof current === "object" && !Array.isArray(current)
+    out[key] = bothObjects ? deepMerge(current as Record<string, any>, value as Record<string, any>) : value
+  }
+  return out as T
+}
+
+/**
+ * 环境变量注入的 JSON 配置（容器化场景）。
+ *
+ * `DSH_AGENTARTS_CONFIG` 提供一段 JSON，深合并覆盖配置文件里的任意字段，
+ * 因此无需挂载 config.json 即可完成全部配置。
+ */
+export function envConfigOverrides(): Record<string, any> | undefined {
+  const raw = process.env.DSH_AGENTARTS_CONFIG
+  if (!raw || raw.trim() === "") return undefined
+  try {
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      console.warn("[agentarts-dsh] DSH_AGENTARTS_CONFIG must be a JSON object, ignored")
+      return undefined
+    }
+    return parsed as Record<string, any>
+  } catch (error) {
+    console.warn("[agentarts-dsh] DSH_AGENTARTS_CONFIG is not valid JSON, ignored:", error)
+    return undefined
+  }
+}
+
+const ENV_PLACEHOLDER = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g
+
+/**
+ * 展开字符串值中的 ${VAR}。
+ *
+ * 未定义的变量**保留原样**并记录，避免静默变成空值导致上报悄悄失效。
+ */
+export function expandEnvPlaceholders(value: any, missing: Set<string> = new Set()): any {
+  if (typeof value === "string") {
+    return value.replace(ENV_PLACEHOLDER, (whole, name: string) => {
+      const env = process.env[name]
+      if (env === undefined) {
+        missing.add(name)
+        return whole
+      }
+      return env
+    })
+  }
+  if (Array.isArray(value)) return value.map((entry) => expandEnvPlaceholders(entry, missing))
+  if (value !== null && typeof value === "object") {
+    const out: Record<string, any> = {}
+    for (const [key, entry] of Object.entries(value)) out[key] = expandEnvPlaceholders(entry, missing)
+    return out
+  }
+  return value
+}
+
+/** 应用环境变量层：JSON 深合并 + 占位符展开 */
+function applyEnvLayer<T extends Record<string, any>>(config: T): T {
+  const overrides = envConfigOverrides()
+  const merged = overrides ? deepMerge(config, overrides) : config
+  const missing = new Set<string>()
+  const expanded = expandEnvPlaceholders(merged, missing) as T
+  if (missing.size > 0) {
+    console.warn(`[agentarts-dsh] undefined env placeholder(s) kept as-is: ${[...missing].join(", ")}`)
+  }
+  return expanded
+}
+
 /**
  * 去掉 UTF-8 BOM（\uFEFF）。
  *
@@ -220,12 +294,13 @@ export function loadConfig(configPath = CONFIG_PATH) {
     if (fs.existsSync(configPath)) {
       const content = stripBom(fs.readFileSync(configPath, "utf-8"))
       const userConfig = JSON.parse(stripJsonComments(content))
-      return mergeConfig(userConfig)
+      return applyEnvLayer(mergeConfig(userConfig))
     }
   } catch (error) {
     console.warn("[agentarts-dsh] Failed to load config, using defaults:", error)
   }
-  return DEFAULT_CONFIG
+  // 文件不存在时仍允许完全由环境变量提供配置
+  return applyEnvLayer(DEFAULT_CONFIG)
 }
 
 /**
@@ -240,7 +315,7 @@ export function readConfigStrict(configPath = CONFIG_PATH): { config?: Record<st
     return { error }
   }
   try {
-    return { config: mergeConfig(JSON.parse(stripJsonComments(content))) }
+    return { config: applyEnvLayer(mergeConfig(JSON.parse(stripJsonComments(content)))) }
   } catch (error) {
     return { error }
   }
