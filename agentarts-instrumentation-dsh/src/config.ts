@@ -16,7 +16,7 @@ export const CONFIG_PATH = path.join(PLUGIN_HOME, "config.json")
 
 const DEFAULT_CONFIG = {
   // 基础配置
-  version: "1.0.0-rc.3",
+  version: "1.0.0-rc.4",
   enabled: true,
   agent_name: "",
   outputDir: path.join(PLUGIN_HOME, "data"),
