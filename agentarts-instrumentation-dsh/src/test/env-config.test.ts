@@ -108,3 +108,90 @@ test("DSH_AGENTARTS_CONFIG 非法 JSON 时忽略并保留文件配置", () => {
     })
   })
 })
+
+test("键名环境变量：直接覆盖 otel 字段", () => {
+  withConfigFile(
+    { otel: { agentarts_agentops_otel_agent_apm_enable: false, agentarts_agentops_apm_exporter_endpoint: "https://file.example" } },
+    (configPath) => {
+      withEnv(
+        {
+          agentarts_agentops_otel_agent_apm_enable: "true",
+          agentarts_agentops_apm_exporter_endpoint: "https://env.example",
+          agentarts_agentops_apm_token: "env-token"
+        },
+        () => {
+          const config = loadConfig(configPath)
+          assert.equal(config.otel.agentarts_agentops_otel_agent_apm_enable, true)
+          assert.equal(config.otel.agentarts_agentops_apm_exporter_endpoint, "https://env.example")
+          assert.equal(config.otel.agentarts_agentops_apm_token, "env-token")
+        }
+      )
+    }
+  )
+})
+
+test("键名环境变量：布尔值支持 true/false/1/0/yes/no", () => {
+  for (const [raw, expected] of [
+    ["true", true],
+    ["FALSE", false],
+    ["1", true],
+    ["0", false],
+    ["yes", true],
+    ["no", false]
+  ] as const) {
+    withConfigFile({ otel: {} }, (configPath) => {
+      withEnv({ agentarts_agentops_otel_agent_aom_enable: raw }, () => {
+        const config = loadConfig(configPath)
+        assert.equal(
+          config.otel.agentarts_agentops_otel_agent_aom_enable,
+          expected,
+          `${raw} 应解析为 ${expected}`
+        )
+      })
+    })
+  }
+})
+
+test("键名环境变量：非法布尔值被忽略，保留原配置", () => {
+  withConfigFile({ otel: { agentarts_agentops_otel_agent_apm_enable: true } }, (configPath) => {
+    withEnv({ agentarts_agentops_otel_agent_apm_enable: "maybe" }, () => {
+      const config = loadConfig(configPath)
+      assert.equal(config.otel.agentarts_agentops_otel_agent_apm_enable, true, "非法值不应覆盖")
+    })
+  })
+})
+
+test("键名环境变量优先于 DSH_AGENTARTS_CONFIG 中的同名字段", () => {
+  withConfigFile({}, (configPath) => {
+    withEnv(
+      {
+        DSH_AGENTARTS_CONFIG: JSON.stringify({ otel: { agentarts_agentops_apm_token: "from-json" } }),
+        agentarts_agentops_apm_token: "from-single-env"
+      },
+      () => {
+        const config = loadConfig(configPath)
+        assert.equal(config.otel.agentarts_agentops_apm_token, "from-single-env", "更具体的单键优先")
+      }
+    )
+  })
+})
+
+test("键名环境变量：AOM 相关四个字段均可覆盖", () => {
+  withConfigFile({}, (configPath) => {
+    withEnv(
+      {
+        agentarts_agentops_otel_agent_aom_enable: "true",
+        agentarts_agentops_aom_exporter_endpoint: "https://aom.example",
+        agentarts_agentops_aom_access_code: "aom-code",
+        agentarts_agentops_aom_prometheus_id: "prom-1"
+      },
+      () => {
+        const config = loadConfig(configPath)
+        assert.equal(config.otel.agentarts_agentops_otel_agent_aom_enable, true)
+        assert.equal(config.otel.agentarts_agentops_aom_exporter_endpoint, "https://aom.example")
+        assert.equal(config.otel.agentarts_agentops_aom_access_code, "aom-code")
+        assert.equal(config.otel.agentarts_agentops_aom_prometheus_id, "prom-1")
+      }
+    )
+  })
+})

@@ -264,12 +264,64 @@ export function expandEnvPlaceholders(value: any, missing: Set<string> = new Set
   return value
 }
 
-/** 应用环境变量层：JSON 深合并 + 占位符展开 */
+/** 支持用配置键名直接覆盖的环境变量（otel 段，键名与环境变量名完全一致） */
+export const DIRECT_ENV_OTEL_KEYS = KNOWN_OTEL_KEYS.filter(
+  (key) => !(DEPRECATED_OTEL_KEYS as readonly string[]).includes(key)
+) as readonly string[]
+
+/** 布尔型环境变量解析：true/false/1/0/yes/no（大小写不敏感），无法识别返回 undefined */
+function parseEnvBoolean(raw: string): boolean | undefined {
+  switch (raw.trim().toLowerCase()) {
+    case "true":
+    case "1":
+    case "yes":
+    case "on":
+      return true
+    case "false":
+    case "0":
+    case "no":
+    case "off":
+      return false
+    default:
+      return undefined
+  }
+}
+
+/**
+ * 按「配置键名即环境变量名」覆盖 otel 段。
+ *
+ * 例：export agentarts_agentops_otel_agent_apm_enable=true
+ *     export agentarts_agentops_apm_token=xxx
+ * 布尔键做类型转换；无法识别的值告警并忽略该键，避免静默写错。
+ */
+export function applyDirectEnvOverrides(config: Record<string, any>): Record<string, any> {
+  const otel = { ...(config.otel ?? {}) }
+  let changed = false
+  for (const key of DIRECT_ENV_OTEL_KEYS) {
+    const raw = process.env[key]
+    if (raw === undefined || raw === "") continue
+    if (key.endsWith("_enable")) {
+      const parsed = parseEnvBoolean(raw)
+      if (parsed === undefined) {
+        console.warn(`[agentarts-dsh] env ${key} expects true/false, got "${raw}"; ignored`)
+        continue
+      }
+      otel[key] = parsed
+    } else {
+      otel[key] = raw
+    }
+    changed = true
+  }
+  return changed ? { ...config, otel } : config
+}
+
+/** 应用环境变量层：JSON 深合并 → 单键环境变量 → 占位符展开（后者优先级更高） */
 function applyEnvLayer<T extends Record<string, any>>(config: T): T {
   const overrides = envConfigOverrides()
   const merged = overrides ? deepMerge(config, overrides) : config
+  const withDirect = applyDirectEnvOverrides(merged) as T
   const missing = new Set<string>()
-  const expanded = expandEnvPlaceholders(merged, missing) as T
+  const expanded = expandEnvPlaceholders(withDirect, missing) as T
   if (missing.size > 0) {
     console.warn(`[agentarts-dsh] undefined env placeholder(s) kept as-is: ${[...missing].join(", ")}`)
   }

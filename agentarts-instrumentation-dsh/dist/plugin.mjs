@@ -41892,11 +41892,51 @@ function expandEnvPlaceholders(value, missing = /* @__PURE__ */ new Set()) {
   }
   return value;
 }
+var DIRECT_ENV_OTEL_KEYS = KNOWN_OTEL_KEYS.filter(
+  (key) => !DEPRECATED_OTEL_KEYS.includes(key)
+);
+function parseEnvBoolean(raw) {
+  switch (raw.trim().toLowerCase()) {
+    case "true":
+    case "1":
+    case "yes":
+    case "on":
+      return true;
+    case "false":
+    case "0":
+    case "no":
+    case "off":
+      return false;
+    default:
+      return void 0;
+  }
+}
+function applyDirectEnvOverrides(config) {
+  const otel = { ...config.otel ?? {} };
+  let changed = false;
+  for (const key of DIRECT_ENV_OTEL_KEYS) {
+    const raw = process.env[key];
+    if (raw === void 0 || raw === "") continue;
+    if (key.endsWith("_enable")) {
+      const parsed = parseEnvBoolean(raw);
+      if (parsed === void 0) {
+        console.warn(`[agentarts-dsh] env ${key} expects true/false, got "${raw}"; ignored`);
+        continue;
+      }
+      otel[key] = parsed;
+    } else {
+      otel[key] = raw;
+    }
+    changed = true;
+  }
+  return changed ? { ...config, otel } : config;
+}
 function applyEnvLayer(config) {
   const overrides = envConfigOverrides();
   const merged = overrides ? deepMerge(config, overrides) : config;
+  const withDirect = applyDirectEnvOverrides(merged);
   const missing = /* @__PURE__ */ new Set();
-  const expanded = expandEnvPlaceholders(merged, missing);
+  const expanded = expandEnvPlaceholders(withDirect, missing);
   if (missing.size > 0) {
     console.warn(`[agentarts-dsh] undefined env placeholder(s) kept as-is: ${[...missing].join(", ")}`);
   }
