@@ -16,7 +16,7 @@ export const CONFIG_PATH = path.join(PLUGIN_HOME, "config.json")
 
 const DEFAULT_CONFIG = {
   // 基础配置
-  version: "1.0.0-rc.4",
+  version: "1.0.0-rc.5",
   enabled: true,
   agent_name: "",
   outputDir: path.join(PLUGIN_HOME, "data"),
@@ -202,41 +202,6 @@ function mergeConfig(userConfig: Record<string, any>) {
   return merged
 }
 
-/** 深合并：对象递归合并，数组与标量整体覆盖 */
-function deepMerge<T extends Record<string, any>>(base: T, patch: Record<string, any>): T {
-  const out: Record<string, any> = { ...base }
-  for (const [key, value] of Object.entries(patch)) {
-    const current = out[key]
-    const bothObjects =
-      value !== null && typeof value === "object" && !Array.isArray(value) &&
-      current !== null && typeof current === "object" && !Array.isArray(current)
-    out[key] = bothObjects ? deepMerge(current as Record<string, any>, value as Record<string, any>) : value
-  }
-  return out as T
-}
-
-/**
- * 环境变量注入的 JSON 配置（容器化场景）。
- *
- * `DSH_AGENTARTS_CONFIG` 提供一段 JSON，深合并覆盖配置文件里的任意字段，
- * 因此无需挂载 config.json 即可完成全部配置。
- */
-export function envConfigOverrides(): Record<string, any> | undefined {
-  const raw = process.env.DSH_AGENTARTS_CONFIG
-  if (!raw || raw.trim() === "") return undefined
-  try {
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      console.warn("[agentarts-dsh] DSH_AGENTARTS_CONFIG must be a JSON object, ignored")
-      return undefined
-    }
-    return parsed as Record<string, any>
-  } catch (error) {
-    console.warn("[agentarts-dsh] DSH_AGENTARTS_CONFIG is not valid JSON, ignored:", error)
-    return undefined
-  }
-}
-
 const ENV_PLACEHOLDER = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g
 
 /**
@@ -359,17 +324,15 @@ export function normalizeBooleanConfig<T extends Record<string, any>>(config: T)
   return out as T
 }
 
-/** 应用环境变量层：JSON 深合并 → 单键环境变量 → 占位符展开（后者优先级更高） */
+/** 应用环境变量层：单键环境变量（同名配置项）→ 占位符展开 → 布尔归一化 */
 function applyEnvLayer<T extends Record<string, any>>(config: T): T {
-  const overrides = envConfigOverrides()
-  const merged = overrides ? deepMerge(config, overrides) : config
-  const withDirect = applyDirectEnvOverrides(merged) as T
+  const withDirect = applyDirectEnvOverrides(config) as T
   const missing = new Set<string>()
   const expanded = expandEnvPlaceholders(withDirect, missing) as T
   if (missing.size > 0) {
     console.warn(`[agentarts-dsh] undefined env placeholder(s) kept as-is: ${[...missing].join(", ")}`)
   }
-  // 占位符可能展开成 "true"/"false" 字符串，展开后再归一化一次
+  // 占位符可能展开成 "true"/"false" 字符串，展开后再归一化
   return normalizeBooleanConfig(expanded as Record<string, any>) as T
 }
 

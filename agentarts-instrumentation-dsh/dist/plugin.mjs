@@ -41695,7 +41695,7 @@ var PLUGIN_HOME = path.join(
 var CONFIG_PATH = path.join(PLUGIN_HOME, "config.json");
 var DEFAULT_CONFIG = {
   // 基础配置
-  version: "1.0.0-rc.4",
+  version: "1.0.0-rc.5",
   enabled: true,
   agent_name: "",
   outputDir: path.join(PLUGIN_HOME, "data"),
@@ -41848,30 +41848,6 @@ function mergeConfig(userConfig) {
   }
   return merged;
 }
-function deepMerge(base, patch) {
-  const out = { ...base };
-  for (const [key, value] of Object.entries(patch)) {
-    const current = out[key];
-    const bothObjects = value !== null && typeof value === "object" && !Array.isArray(value) && current !== null && typeof current === "object" && !Array.isArray(current);
-    out[key] = bothObjects ? deepMerge(current, value) : value;
-  }
-  return out;
-}
-function envConfigOverrides() {
-  const raw = process.env.DSH_AGENTARTS_CONFIG;
-  if (!raw || raw.trim() === "") return void 0;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      console.warn("[agentarts-dsh] DSH_AGENTARTS_CONFIG must be a JSON object, ignored");
-      return void 0;
-    }
-    return parsed;
-  } catch (error) {
-    console.warn("[agentarts-dsh] DSH_AGENTARTS_CONFIG is not valid JSON, ignored:", error);
-    return void 0;
-  }
-}
 var ENV_PLACEHOLDER = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
 function expandEnvPlaceholders(value, missing = /* @__PURE__ */ new Set()) {
   if (typeof value === "string") {
@@ -41966,9 +41942,7 @@ function normalizeBooleanConfig(config) {
   return out;
 }
 function applyEnvLayer(config) {
-  const overrides = envConfigOverrides();
-  const merged = overrides ? deepMerge(config, overrides) : config;
-  const withDirect = applyDirectEnvOverrides(merged);
+  const withDirect = applyDirectEnvOverrides(config);
   const missing = /* @__PURE__ */ new Set();
   const expanded = expandEnvPlaceholders(withDirect, missing);
   if (missing.size > 0) {
@@ -43082,7 +43056,7 @@ var import_exporter_trace_otlp_grpc = __toESM(require_src12(), 1);
 var import_exporter_metrics_otlp_grpc = __toESM(require_src14(), 1);
 
 // src/probe-version.generated.ts
-var PROBE_VERSION = "1.0.0-rc.4";
+var PROBE_VERSION = "1.0.0-rc.5";
 
 // src/otel-reporter.ts
 var tracerProvider = null;
