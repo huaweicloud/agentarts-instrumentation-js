@@ -195,3 +195,44 @@ test("键名环境变量：AOM 相关四个字段均可覆盖", () => {
     )
   })
 })
+
+test("布尔归一化：JSON 环境变量里写成字符串 \"true\" 也按 true 处理", () => {
+  withConfigFile({ otel: {} }, (configPath) => {
+    withEnv(
+      {
+        DSH_AGENTARTS_CONFIG: JSON.stringify({ otel: { agentarts_agentops_otel_agent_apm_enable: "true" } })
+      },
+      () => {
+        const config = loadConfig(configPath)
+        assert.equal(config.otel.agentarts_agentops_otel_agent_apm_enable, true, "字符串 true 应转为布尔 true")
+      }
+    )
+  })
+})
+
+test("布尔归一化：文件里 features 写成字符串 \"false\" 不会被视为真值（隐私）", () => {
+  withConfigFile({ features: { captureMessageContent: "false" }, otel: {} }, (configPath) => {
+    withEnv({ DSH_AGENTARTS_CONFIG: undefined }, () => {
+      const config = loadConfig(configPath)
+      assert.equal(config.features.captureMessageContent, false, "字符串 false 必须转成布尔 false")
+    })
+  })
+})
+
+test("布尔归一化：占位符展开成 \"false\" 后仍然生效", () => {
+  withConfigFile({ features: { debug: "\${FLAG_DEBUG}" }, otel: {} }, (configPath) => {
+    withEnv({ DSH_AGENTARTS_CONFIG: undefined, FLAG_DEBUG: "false" }, () => {
+      const config = loadConfig(configPath)
+      assert.equal(config.features.debug, false)
+    })
+  })
+})
+
+test("布尔归一化：非法值回退默认值并告警", () => {
+  withConfigFile({ features: { captureMessageContent: "maybe" }, otel: {} }, (configPath) => {
+    withEnv({ DSH_AGENTARTS_CONFIG: undefined }, () => {
+      const config = loadConfig(configPath)
+      assert.equal(config.features.captureMessageContent, true, "回退到默认值 true")
+    })
+  })
+})

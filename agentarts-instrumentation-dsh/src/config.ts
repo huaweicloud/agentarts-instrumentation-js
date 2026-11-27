@@ -315,6 +315,50 @@ export function applyDirectEnvOverrides(config: Record<string, any>): Record<str
   return changed ? { ...config, otel } : config
 }
 
+/** 配置中布尔语义的字段路径（文件或 JSON 里可能被写成字符串） */
+const BOOLEAN_CONFIG_PATHS: ReadonlyArray<readonly [string, string]> = [
+  ["otel", "agentarts_agentops_otel_agent_apm_enable"],
+  ["otel", "agentarts_agentops_otel_agent_aom_enable"],
+  ["features", "debug"],
+  ["features", "captureMessageContent"],
+  ["features", "linkSubagentTrace"]
+]
+
+/**
+ * 归一化布尔字段。
+ *
+ * - 字符串 "true"/"false"/"1"/"0"/"yes"/"no"/"on"/"off"（大小写不敏感）转成 boolean
+ * - 无法识别的值告警并删除该键（回退到默认值），避免 "false" 被当作真值
+ *   导致内容采集或上报开关行为与预期相反
+ */
+export function normalizeBooleanConfig<T extends Record<string, any>>(config: T): T {
+  const out: Record<string, any> = { ...config }
+  for (const [section, key] of BOOLEAN_CONFIG_PATHS) {
+    const source = out[section]
+    if (source === null || typeof source !== "object" || Array.isArray(source)) continue
+    const target: Record<string, any> = { ...source }
+    if (!(key in target)) continue
+    const value = target[key]
+    if (typeof value === "boolean") continue
+    if (typeof value === "string") {
+      const parsed = parseEnvBoolean(value)
+      if (parsed !== undefined) {
+        target[key] = parsed
+        out[section] = target
+        continue
+      }
+    }
+    const fallback = (DEFAULT_CONFIG as Record<string, any>)[section]?.[key]
+    console.warn(
+      `[agentarts-dsh] ${section}.${key} expects a boolean, got ${JSON.stringify(value)}; using ${JSON.stringify(fallback)}`
+    )
+    if (typeof fallback === "boolean") target[key] = fallback
+    else delete target[key]
+    out[section] = target
+  }
+  return out as T
+}
+
 /** 应用环境变量层：JSON 深合并 → 单键环境变量 → 占位符展开（后者优先级更高） */
 function applyEnvLayer<T extends Record<string, any>>(config: T): T {
   const overrides = envConfigOverrides()
@@ -325,7 +369,8 @@ function applyEnvLayer<T extends Record<string, any>>(config: T): T {
   if (missing.size > 0) {
     console.warn(`[agentarts-dsh] undefined env placeholder(s) kept as-is: ${[...missing].join(", ")}`)
   }
-  return expanded
+  // 占位符可能展开成 "true"/"false" 字符串，展开后再归一化一次
+  return normalizeBooleanConfig(expanded as Record<string, any>) as T
 }
 
 /**

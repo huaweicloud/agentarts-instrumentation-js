@@ -41931,6 +41931,40 @@ function applyDirectEnvOverrides(config) {
   }
   return changed ? { ...config, otel } : config;
 }
+var BOOLEAN_CONFIG_PATHS = [
+  ["otel", "agentarts_agentops_otel_agent_apm_enable"],
+  ["otel", "agentarts_agentops_otel_agent_aom_enable"],
+  ["features", "debug"],
+  ["features", "captureMessageContent"],
+  ["features", "linkSubagentTrace"]
+];
+function normalizeBooleanConfig(config) {
+  const out = { ...config };
+  for (const [section, key] of BOOLEAN_CONFIG_PATHS) {
+    const source = out[section];
+    if (source === null || typeof source !== "object" || Array.isArray(source)) continue;
+    const target = { ...source };
+    if (!(key in target)) continue;
+    const value = target[key];
+    if (typeof value === "boolean") continue;
+    if (typeof value === "string") {
+      const parsed = parseEnvBoolean(value);
+      if (parsed !== void 0) {
+        target[key] = parsed;
+        out[section] = target;
+        continue;
+      }
+    }
+    const fallback = DEFAULT_CONFIG[section]?.[key];
+    console.warn(
+      `[agentarts-dsh] ${section}.${key} expects a boolean, got ${JSON.stringify(value)}; using ${JSON.stringify(fallback)}`
+    );
+    if (typeof fallback === "boolean") target[key] = fallback;
+    else delete target[key];
+    out[section] = target;
+  }
+  return out;
+}
 function applyEnvLayer(config) {
   const overrides = envConfigOverrides();
   const merged = overrides ? deepMerge(config, overrides) : config;
@@ -41940,7 +41974,7 @@ function applyEnvLayer(config) {
   if (missing.size > 0) {
     console.warn(`[agentarts-dsh] undefined env placeholder(s) kept as-is: ${[...missing].join(", ")}`);
   }
-  return expanded;
+  return normalizeBooleanConfig(expanded);
 }
 function stripBom(text) {
   return text.charCodeAt(0) === 65279 ? text.slice(1) : text;
