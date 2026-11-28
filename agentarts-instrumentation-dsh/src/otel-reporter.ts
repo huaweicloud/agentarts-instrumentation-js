@@ -109,6 +109,25 @@ const EXPORT_MAX_ATTEMPTS = 3
 // 会复用同一个坏通道并立即失败（实测 1s/3s 的第二次、第三次尝试都是瞬时失败）。
 const EXPORT_RETRY_BACKOFF_MS = [2000, 8000]
 
+/**
+ * 每批导出的 span 数量。
+ *
+ * OTel 默认 512，但实战中一批 429 个 span 就会超出服务端接收上限而整批失败；
+ * 改为 64 可显著降低单批体积，代价是请求数变多（同一轮仍会自动分批）。
+ * 可用环境变量 `OTEL_BSP_MAX_EXPORT_BATCH_SIZE` 覆盖。
+ */
+export const DEFAULT_MAX_EXPORT_BATCH_SIZE = 64
+
+export function resolveExportBatchSize(raw: string | undefined = process.env.OTEL_BSP_MAX_EXPORT_BATCH_SIZE): number {
+  if (raw === undefined || raw.trim() === "") return DEFAULT_MAX_EXPORT_BATCH_SIZE
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    logError(`[agentarts-dsh] invalid OTEL_BSP_MAX_EXPORT_BATCH_SIZE "${raw}", using ${DEFAULT_MAX_EXPORT_BATCH_SIZE}`)
+    return DEFAULT_MAX_EXPORT_BATCH_SIZE
+  }
+  return Math.floor(parsed)
+}
+
 function exportWithRetry<T>(
   rawExport: (payload: T, callback: (result: ExportResult) => void) => void,
   payload: T,
@@ -246,13 +265,15 @@ function initOtel(config: AgentArtsOtelConfig) {
           endpoint: apmEndpoint
         }))
       }
+      const maxExportBatchSize = resolveExportBatchSize()
       tracerProvider = new BasicTracerProvider({
         resource,
-        spanProcessors: [new BatchSpanProcessor(traceExporter)]
+        spanProcessors: [new BatchSpanProcessor(traceExporter, { maxExportBatchSize })]
       })
       tracer = tracerProvider.getTracer(SCOPE_NAME, PROBE_VERSION)
       log("[agentarts-dsh] APM (Traces) initialized", {
-        endpoint: config.agentarts_agentops_apm_exporter_endpoint
+        endpoint: config.agentarts_agentops_apm_exporter_endpoint,
+        maxExportBatchSize
       })
     } catch (error) {
       logError("[agentarts-dsh] APM init failed:", error)

@@ -41695,7 +41695,7 @@ var PLUGIN_HOME = path.join(
 var CONFIG_PATH = path.join(PLUGIN_HOME, "config.json");
 var DEFAULT_CONFIG = {
   // 基础配置
-  version: "1.0.0-rc.7",
+  version: "1.0.0-rc.8",
   enabled: true,
   agent_name: "",
   outputDir: path.join(PLUGIN_HOME, "data"),
@@ -43086,7 +43086,7 @@ var import_exporter_trace_otlp_grpc = __toESM(require_src12(), 1);
 var import_exporter_metrics_otlp_grpc = __toESM(require_src14(), 1);
 
 // src/probe-version.generated.ts
-var PROBE_VERSION = "1.0.0-rc.7";
+var PROBE_VERSION = "1.0.0-rc.8";
 
 // src/otel-reporter.ts
 var tracerProvider = null;
@@ -43104,6 +43104,16 @@ var SCOPE_NAME = "agentarts-instrumentation-dsh";
 var EXPORT_TIMEOUT_MS = 3e4;
 var EXPORT_MAX_ATTEMPTS = 3;
 var EXPORT_RETRY_BACKOFF_MS = [2e3, 8e3];
+var DEFAULT_MAX_EXPORT_BATCH_SIZE = 64;
+function resolveExportBatchSize(raw = process.env.OTEL_BSP_MAX_EXPORT_BATCH_SIZE) {
+  if (raw === void 0 || raw.trim() === "") return DEFAULT_MAX_EXPORT_BATCH_SIZE;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    logError(`[agentarts-dsh] invalid OTEL_BSP_MAX_EXPORT_BATCH_SIZE "${raw}", using ${DEFAULT_MAX_EXPORT_BATCH_SIZE}`);
+    return DEFAULT_MAX_EXPORT_BATCH_SIZE;
+  }
+  return Math.floor(parsed);
+}
 function exportWithRetry(rawExport, payload, callback, label, describe, onSuccess) {
   let attempt = 0;
   const run = () => {
@@ -43219,13 +43229,15 @@ function initOtel(config) {
           endpoint: apmEndpoint
         }));
       };
+      const maxExportBatchSize = resolveExportBatchSize();
       tracerProvider = new import_sdk_trace_base.BasicTracerProvider({
         resource,
-        spanProcessors: [new import_sdk_trace_base.BatchSpanProcessor(traceExporter)]
+        spanProcessors: [new import_sdk_trace_base.BatchSpanProcessor(traceExporter, { maxExportBatchSize })]
       });
       tracer = tracerProvider.getTracer(SCOPE_NAME, PROBE_VERSION);
       log("[agentarts-dsh] APM (Traces) initialized", {
-        endpoint: config.agentarts_agentops_apm_exporter_endpoint
+        endpoint: config.agentarts_agentops_apm_exporter_endpoint,
+        maxExportBatchSize
       });
     } catch (error) {
       logError("[agentarts-dsh] APM init failed:", error);
