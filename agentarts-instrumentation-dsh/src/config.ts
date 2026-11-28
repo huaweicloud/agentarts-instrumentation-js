@@ -16,7 +16,7 @@ export const CONFIG_PATH = path.join(PLUGIN_HOME, "config.json")
 
 const DEFAULT_CONFIG = {
   // 基础配置
-  version: "1.0.0-rc.5",
+  version: "1.0.0-rc.6",
   enabled: true,
   agent_name: "",
   outputDir: path.join(PLUGIN_HOME, "data"),
@@ -234,6 +234,9 @@ export const DIRECT_ENV_OTEL_KEYS = KNOWN_OTEL_KEYS.filter(
   (key) => !(DEPRECATED_OTEL_KEYS as readonly string[]).includes(key)
 ) as readonly string[]
 
+/** 支持用同名环境变量覆盖的 features 布尔项（含输入输出采集开关） */
+export const DIRECT_ENV_FEATURE_KEYS = ["debug", "captureMessageContent", "linkSubagentTrace"] as const
+
 /** 布尔型环境变量解析：true/false/1/0/yes/no（大小写不敏感），无法识别返回 undefined */
 function parseEnvBoolean(raw: string): boolean | undefined {
   switch (raw.trim().toLowerCase()) {
@@ -261,7 +264,10 @@ function parseEnvBoolean(raw: string): boolean | undefined {
  */
 export function applyDirectEnvOverrides(config: Record<string, any>): Record<string, any> {
   const otel = { ...(config.otel ?? {}) }
-  let changed = false
+  const features = { ...(config.features ?? {}) }
+  let otelChanged = false
+  let featuresChanged = false
+
   for (const key of DIRECT_ENV_OTEL_KEYS) {
     const raw = process.env[key]
     if (raw === undefined || raw === "") continue
@@ -275,9 +281,26 @@ export function applyDirectEnvOverrides(config: Record<string, any>): Record<str
     } else {
       otel[key] = raw
     }
-    changed = true
+    otelChanged = true
   }
-  return changed ? { ...config, otel } : config
+
+  for (const key of DIRECT_ENV_FEATURE_KEYS) {
+    const raw = process.env[key]
+    if (raw === undefined || raw === "") continue
+    const parsed = parseEnvBoolean(raw)
+    if (parsed === undefined) {
+      console.warn(`[agentarts-dsh] env ${key} expects true/false, got "${raw}"; ignored`)
+      continue
+    }
+    features[key] = parsed
+    featuresChanged = true
+  }
+
+  if (!otelChanged && !featuresChanged) return config
+  const next: Record<string, any> = { ...config }
+  if (otelChanged) next.otel = otel
+  if (featuresChanged) next.features = features
+  return next
 }
 
 /** 配置中布尔语义的字段路径（文件或 JSON 里可能被写成字符串） */

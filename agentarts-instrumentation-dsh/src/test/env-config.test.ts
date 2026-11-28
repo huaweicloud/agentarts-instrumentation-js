@@ -183,3 +183,31 @@ test("布尔归一化：非法值回退默认值并告警", () => {
     })
   })
 })
+
+test("键名环境变量：captureMessageContent 可关闭输入输出采集", () => {
+  withConfigFile({ features: { captureMessageContent: true }, otel: {} }, (configPath) => {
+    withEnv({ captureMessageContent: "false" }, () => {
+      const config = loadConfig(configPath)
+      assert.equal(config.features.captureMessageContent, false, "环境变量应能关闭采集")
+    })
+  })
+})
+
+test("键名环境变量：debug 与 linkSubagentTrace 同样可覆盖", () => {
+  withConfigFile({ features: { debug: false, linkSubagentTrace: true }, otel: {} }, (configPath) => {
+    withEnv({ debug: "true", linkSubagentTrace: "0" }, () => {
+      const config = loadConfig(configPath)
+      assert.equal(config.features.debug, true)
+      assert.equal(config.features.linkSubagentTrace, false)
+    })
+  })
+})
+
+test("键名环境变量：features 非法布尔值被忽略并保留原配置", () => {
+  withConfigFile({ features: { captureMessageContent: false }, otel: {} }, (configPath) => {
+    withEnv({ captureMessageContent: "maybe" }, () => {
+      const config = loadConfig(configPath)
+      assert.equal(config.features.captureMessageContent, false, "非法值不应覆盖")
+    })
+  })
+})

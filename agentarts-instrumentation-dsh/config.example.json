@@ -2,7 +2,7 @@
 // 会剥离 // 与 /* */ 注释）。配置脚本 configure/dsh-agentarts-plugin.(ps1|sh) 会把
 // 命令行参数合并写入 ~/.dsh/plugins/agentarts-instrumentation-dsh/config.json。
 {
-  "version": "1.0.0-rc.5",
+  "version": "1.0.0-rc.6",
   // 总开关：false 时插件加载后不采集、不上报
   "enabled": true,
   // 数据/日志目录（~ 展开为用户主目录；Windows 下的 msys 风格路径也会被归一化）

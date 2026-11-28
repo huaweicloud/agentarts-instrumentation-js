@@ -41695,7 +41695,7 @@ var PLUGIN_HOME = path.join(
 var CONFIG_PATH = path.join(PLUGIN_HOME, "config.json");
 var DEFAULT_CONFIG = {
   // 基础配置
-  version: "1.0.0-rc.5",
+  version: "1.0.0-rc.6",
   enabled: true,
   agent_name: "",
   outputDir: path.join(PLUGIN_HOME, "data"),
@@ -41871,6 +41871,7 @@ function expandEnvPlaceholders(value, missing = /* @__PURE__ */ new Set()) {
 var DIRECT_ENV_OTEL_KEYS = KNOWN_OTEL_KEYS.filter(
   (key) => !DEPRECATED_OTEL_KEYS.includes(key)
 );
+var DIRECT_ENV_FEATURE_KEYS = ["debug", "captureMessageContent", "linkSubagentTrace"];
 function parseEnvBoolean(raw) {
   switch (raw.trim().toLowerCase()) {
     case "true":
@@ -41889,7 +41890,9 @@ function parseEnvBoolean(raw) {
 }
 function applyDirectEnvOverrides(config) {
   const otel = { ...config.otel ?? {} };
-  let changed = false;
+  const features = { ...config.features ?? {} };
+  let otelChanged = false;
+  let featuresChanged = false;
   for (const key of DIRECT_ENV_OTEL_KEYS) {
     const raw = process.env[key];
     if (raw === void 0 || raw === "") continue;
@@ -41903,9 +41906,24 @@ function applyDirectEnvOverrides(config) {
     } else {
       otel[key] = raw;
     }
-    changed = true;
+    otelChanged = true;
   }
-  return changed ? { ...config, otel } : config;
+  for (const key of DIRECT_ENV_FEATURE_KEYS) {
+    const raw = process.env[key];
+    if (raw === void 0 || raw === "") continue;
+    const parsed = parseEnvBoolean(raw);
+    if (parsed === void 0) {
+      console.warn(`[agentarts-dsh] env ${key} expects true/false, got "${raw}"; ignored`);
+      continue;
+    }
+    features[key] = parsed;
+    featuresChanged = true;
+  }
+  if (!otelChanged && !featuresChanged) return config;
+  const next = { ...config };
+  if (otelChanged) next.otel = otel;
+  if (featuresChanged) next.features = features;
+  return next;
 }
 var BOOLEAN_CONFIG_PATHS = [
   ["otel", "agentarts_agentops_otel_agent_apm_enable"],
@@ -43056,7 +43074,7 @@ var import_exporter_trace_otlp_grpc = __toESM(require_src12(), 1);
 var import_exporter_metrics_otlp_grpc = __toESM(require_src14(), 1);
 
 // src/probe-version.generated.ts
-var PROBE_VERSION = "1.0.0-rc.5";
+var PROBE_VERSION = "1.0.0-rc.6";
 
 // src/otel-reporter.ts
 var tracerProvider = null;
