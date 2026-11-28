@@ -4,7 +4,7 @@
 // 运行参数从 ~/.dsh/plugins/agentarts-instrumentation-dsh/config.json 读取。
 import * as os from "node:os"
 import * as path from "node:path"
-import { CONFIG_PATH, detectDshVersion, loadConfig, resolveOutputDir, validateConfig, watchConfig } from "./config.js"
+import { CONFIG_PATH, detectDshVersion, loadConfig, resolveOutputDir, resolveReportingState, validateConfig, watchConfig } from "./config.js"
 import { initLogger, log, logError, setDebugEnabled, setLogRetentionDays } from "./logger.js"
 import { DshTraceCoordinator } from "./coordinator.js"
 import {
@@ -45,6 +45,16 @@ export default class DshMetricsPlugin {
       dsh.logger.info("[agentarts-dsh] collection is disabled")
       return
     }
+    // 未配置任何上报通道时保持完全惰性：不建日志、不建 coordinator、
+    // 不订阅会话事件、不拦截 llm/stream，避免给未接入的 profile 增加开销。
+    const reporting = resolveReportingState(config)
+    if (!reporting.ready) {
+      const detail = reporting.missing.length > 0 ? ` (incomplete: ${reporting.missing.join(", ")})` : ""
+      dsh.logger.info(
+        `[agentarts-dsh] not configured, plugin stays idle${detail}; set APM/AOM settings in ${CONFIG_PATH} or via environment variables`
+      )
+      return
+    }
     const outputDir = resolveOutputDir(config)
     const logsDir = path.join(outputDir, "logs")
     initLogger(logsDir, config.features?.logRetentionDays ?? 14)
@@ -67,12 +77,16 @@ export default class DshMetricsPlugin {
       dsh.logger.warn(message)
       logError(message)
     }
-    if (config.otel) {
-      initOtel(config.otel)
-      log("[agentarts-dsh] OTel initialized")
-    } else {
-      log("[agentarts-dsh] OTel not configured (otel config missing), traces/metrics disabled")
-    }
+    // 只启用确定可用的通道：声明开启但缺字段的那一路不注册导出器
+    initOtel({
+      ...config.otel,
+      agentarts_agentops_otel_agent_apm_enable: reporting.apmEnabled,
+      agentarts_agentops_otel_agent_aom_enable: reporting.aomEnabled
+    })
+    log("[agentarts-dsh] OTel initialized", {
+      apm: reporting.apmEnabled,
+      aom: reporting.aomEnabled
+    })
     const userId = config["user.id"] || os.hostname()
     this.coordinator = new DshTraceCoordinator(config, userId, dsh.logger)
     this.coordinator.onTurnStart = (startTime, parentContext, subagentName, isSubagent) => {

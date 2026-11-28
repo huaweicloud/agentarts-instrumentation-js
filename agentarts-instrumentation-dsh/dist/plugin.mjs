@@ -41695,7 +41695,7 @@ var PLUGIN_HOME = path.join(
 var CONFIG_PATH = path.join(PLUGIN_HOME, "config.json");
 var DEFAULT_CONFIG = {
   // 基础配置
-  version: "1.0.0-rc.6",
+  version: "1.0.0-rc.7",
   enabled: true,
   agent_name: "",
   outputDir: path.join(PLUGIN_HOME, "data"),
@@ -41967,6 +41967,18 @@ function applyEnvLayer(config) {
     console.warn(`[agentarts-dsh] undefined env placeholder(s) kept as-is: ${[...missing].join(", ")}`);
   }
   return normalizeBooleanConfig(expanded);
+}
+function resolveReportingState(config) {
+  const otel = config?.otel ?? {};
+  const missing = [];
+  const apmWanted = otel.agentarts_agentops_otel_agent_apm_enable === true;
+  const apmEnabled = apmWanted && typeof otel.agentarts_agentops_apm_exporter_endpoint === "string" && otel.agentarts_agentops_apm_exporter_endpoint !== "" && typeof otel.agentarts_agentops_apm_token === "string" && otel.agentarts_agentops_apm_token !== "";
+  if (apmWanted && !apmEnabled) missing.push("APM (endpoint + token)");
+  const aomWanted = otel.agentarts_agentops_otel_agent_aom_enable === true;
+  const aomEnabled = aomWanted && typeof otel.agentarts_agentops_aom_exporter_endpoint === "string" && otel.agentarts_agentops_aom_exporter_endpoint !== "" && typeof otel.agentarts_agentops_aom_access_code === "string" && otel.agentarts_agentops_aom_access_code !== "" && typeof otel.agentarts_agentops_aom_prometheus_id === "string" && otel.agentarts_agentops_aom_prometheus_id !== "";
+  if (aomWanted && !aomEnabled) missing.push("AOM (endpoint + access code + prometheus id)");
+  const enabled = config?.enabled !== false;
+  return { apmEnabled, aomEnabled, ready: enabled && (apmEnabled || aomEnabled), missing };
 }
 function stripBom(text) {
   return text.charCodeAt(0) === 65279 ? text.slice(1) : text;
@@ -43074,7 +43086,7 @@ var import_exporter_trace_otlp_grpc = __toESM(require_src12(), 1);
 var import_exporter_metrics_otlp_grpc = __toESM(require_src14(), 1);
 
 // src/probe-version.generated.ts
-var PROBE_VERSION = "1.0.0-rc.6";
+var PROBE_VERSION = "1.0.0-rc.7";
 
 // src/otel-reporter.ts
 var tracerProvider = null;
@@ -44347,6 +44359,14 @@ var DshMetricsPlugin = class {
       dsh.logger.info("[agentarts-dsh] collection is disabled");
       return;
     }
+    const reporting = resolveReportingState(config);
+    if (!reporting.ready) {
+      const detail = reporting.missing.length > 0 ? ` (incomplete: ${reporting.missing.join(", ")})` : "";
+      dsh.logger.info(
+        `[agentarts-dsh] not configured, plugin stays idle${detail}; set APM/AOM settings in ${CONFIG_PATH} or via environment variables`
+      );
+      return;
+    }
     const outputDir = resolveOutputDir(config);
     const logsDir2 = path4.join(outputDir, "logs");
     initLogger(logsDir2, config.features?.logRetentionDays ?? 14);
@@ -44368,12 +44388,15 @@ var DshMetricsPlugin = class {
       dsh.logger.warn(message);
       logError(message);
     }
-    if (config.otel) {
-      initOtel(config.otel);
-      log("[agentarts-dsh] OTel initialized");
-    } else {
-      log("[agentarts-dsh] OTel not configured (otel config missing), traces/metrics disabled");
-    }
+    initOtel({
+      ...config.otel,
+      agentarts_agentops_otel_agent_apm_enable: reporting.apmEnabled,
+      agentarts_agentops_otel_agent_aom_enable: reporting.aomEnabled
+    });
+    log("[agentarts-dsh] OTel initialized", {
+      apm: reporting.apmEnabled,
+      aom: reporting.aomEnabled
+    });
     const userId = config["user.id"] || os2.hostname();
     this.coordinator = new DshTraceCoordinator(config, userId, dsh.logger);
     this.coordinator.onTurnStart = (startTime, parentContext, subagentName, isSubagent) => {

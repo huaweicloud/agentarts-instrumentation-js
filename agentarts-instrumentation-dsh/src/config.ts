@@ -16,7 +16,7 @@ export const CONFIG_PATH = path.join(PLUGIN_HOME, "config.json")
 
 const DEFAULT_CONFIG = {
   // 基础配置
-  version: "1.0.0-rc.6",
+  version: "1.0.0-rc.7",
   enabled: true,
   agent_name: "",
   outputDir: path.join(PLUGIN_HOME, "data"),
@@ -357,6 +357,52 @@ function applyEnvLayer<T extends Record<string, any>>(config: T): T {
   }
   // 占位符可能展开成 "true"/"false" 字符串，展开后再归一化
   return normalizeBooleanConfig(expanded as Record<string, any>) as T
+}
+
+/** 上报能力判定结果 */
+export interface ReportingState {
+  /** APM（trace）是否具备完整配置 */
+  apmEnabled: boolean
+  /** AOM（metric）是否具备完整配置 */
+  aomEnabled: boolean
+  /** 是否应该真正启用采集（enabled 且至少一路可用） */
+  ready: boolean
+  /** 声明启用但缺少必填项的描述，用于日志 */
+  missing: string[]
+}
+
+/**
+ * 判断当前配置是否真的能上报。
+ *
+ * `_enable` 为 true 但缺少必填项（端点/凭证）时不视为可用——
+ * 否则插件会注册一堆钩子却永远发不出去，白白增加运行时开销。
+ */
+export function resolveReportingState(config: Record<string, any> | undefined): ReportingState {
+  const otel = (config?.otel ?? {}) as Record<string, any>
+  const missing: string[] = []
+
+  const apmWanted = otel.agentarts_agentops_otel_agent_apm_enable === true
+  const apmEnabled =
+    apmWanted &&
+    typeof otel.agentarts_agentops_apm_exporter_endpoint === "string" &&
+    otel.agentarts_agentops_apm_exporter_endpoint !== "" &&
+    typeof otel.agentarts_agentops_apm_token === "string" &&
+    otel.agentarts_agentops_apm_token !== ""
+  if (apmWanted && !apmEnabled) missing.push("APM (endpoint + token)")
+
+  const aomWanted = otel.agentarts_agentops_otel_agent_aom_enable === true
+  const aomEnabled =
+    aomWanted &&
+    typeof otel.agentarts_agentops_aom_exporter_endpoint === "string" &&
+    otel.agentarts_agentops_aom_exporter_endpoint !== "" &&
+    typeof otel.agentarts_agentops_aom_access_code === "string" &&
+    otel.agentarts_agentops_aom_access_code !== "" &&
+    typeof otel.agentarts_agentops_aom_prometheus_id === "string" &&
+    otel.agentarts_agentops_aom_prometheus_id !== ""
+  if (aomWanted && !aomEnabled) missing.push("AOM (endpoint + access code + prometheus id)")
+
+  const enabled = config?.enabled !== false
+  return { apmEnabled, aomEnabled, ready: enabled && (apmEnabled || aomEnabled), missing }
 }
 
 /**
